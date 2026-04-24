@@ -1,0 +1,1199 @@
+<!DOCTYPE html>
+<html lang="hi" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P.S.B. Farm Manager v5.1 (Google Auth)</title>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+Bhai+2:wght@400;600;800&family=Noto+Sans+Devanagari:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --primary:#1a6e2e;--primary-light:#2E7D32;--primary-dark:#0d3d18;
+  --accent:#f5a623;--accent2:#e8f5e9;--bg:#f0f4f1;--danger:#c62828;
+  --box-bg:#ffffff;--text:#1c2e1e;--muted:#6b7c6d;--border:#cde0ce;
+  --shadow:0 4px 20px rgba(26,110,46,0.12);--card-bg:#ffffff;
+  --input-bg:#fafff9;--table-alt:#f5fbf5;
+  --header-bg:linear-gradient(135deg,#1a6e2e,#43a047);
+}
+[data-theme="dark"]{
+  --bg:#0f1a11;--box-bg:#1a2a1d;--text:#d4edda;--muted:#8aab8f;
+  --border:#2e4d32;--card-bg:#213026;--input-bg:#1e2f22;
+  --table-alt:#1e2f22;--accent2:#1e2f22;
+  --header-bg:linear-gradient(135deg,#0d3d18,#1a6e2e);
+  --shadow:0 4px 20px rgba(0,0,0,0.4);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Noto Sans Devanagari','Baloo Bhai 2',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:8px;transition:background .3s,color .3s;}
+.container{max-width:740px;margin:auto;background:var(--box-bg);border-radius:18px;box-shadow:var(--shadow);overflow:hidden;}
+
+/* ====== AUTH SCREENS (GOOGLE LOGIN) ====== */
+#authScreen{display:none;padding:30px 20px 24px;background:linear-gradient(150deg,#1a6e2e,#2e7d32,#43a047);min-height:100vh;display:flex;flex-direction:column;justify-content:center;}
+.auth-logo{text-align:center;margin-bottom:24px;}
+.auth-logo .icon{font-size:58px;filter:drop-shadow(0 4px 10px #00000050);}
+.auth-logo h1{color:#fff;font-size:26px;font-weight:800;margin:10px 0 5px;font-family:'Baloo Bhai 2';}
+.auth-logo p{color:#c8e6c9;font-size:13px;}
+.auth-card{background:var(--box-bg);border-radius:18px;padding:28px 20px;box-shadow:0 12px 40px #00000040;text-align:center;}
+.auth-card h2{color:var(--primary);margin-bottom:6px;font-size:20px;}
+.auth-subtitle{color:var(--muted);font-size:13px;margin-bottom:24px;}
+.btn-google{background:#fff;color:#3c4043;border:1px solid #dadce0;border-radius:12px;padding:12px 16px;font-size:15px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;width:100%;transition:all .2s;box-shadow:0 1px 2px 0 rgba(60,64,67,.3);}
+.btn-google:hover{background:#f8f9fa;box-shadow:0 1px 3px 1px rgba(60,64,67,.15);}
+.btn-google img{width:22px;height:22px;}
+[data-theme="dark"] .btn-google{background:#202124;color:#e8eaed;border-color:#5f6368;}
+[data-theme="dark"] .btn-google:hover{background:#303134;}
+#authError{color:#ff5252;text-align:center;font-size:13px;margin-top:12px;min-height:20px;font-weight:600;}
+
+/* HEADER & PROFILE */
+#appScreen{display:none;}
+.app-header{background:var(--header-bg);padding:14px 18px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.app-header h2{color:#fff;font-size:18px;font-weight:800;font-family:'Baloo Bhai 2';}
+.welcome-row{display:flex;align-items:center;gap:8px;margin-top:4px;}
+.profile-pic{width:28px;height:28px;border-radius:50%;border:1.5px solid #fff;object-fit:cover;box-shadow:0 2px 5px rgba(0,0,0,0.2);}
+.welcome{color:#c8e6c9;font-size:12px;}
+.header-actions{display:flex;gap:7px;align-items:center;flex-shrink:0;}
+.btn-icon{background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.3);padding:7px 11px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;font-weight:600;transition:background .2s;}
+.btn-icon:hover{background:rgba(255,255,255,0.28);}
+
+/* DIESEL WARNING */
+.diesel-warning{background:linear-gradient(135deg,#bf360c,#e64a19);color:#fff;padding:11px 16px;font-size:13px;font-weight:700;display:none;animation:warnPulse 1.5s infinite alternate;text-align:center;border-radius:0;}
+@keyframes warnPulse{from{opacity:1}to{opacity:.75}}
+
+/* SERVICE ALERT */
+.service-alert{background:#ffebee;border-bottom:2px solid #c62828;padding:11px 16px;font-size:13px;color:#c62828;font-weight:700;display:none;animation:svcPulse 1s infinite alternate;text-align:center;}
+@keyframes svcPulse{from{opacity:1}to{opacity:.7}}
+
+/* TABS */
+.tabs{display:flex;background:#f0f0f0;border-bottom:2px solid var(--border);overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+[data-theme="dark"] .tabs{background:#162019;}
+.tab-btn{flex:0 0 auto;min-width:72px;padding:11px 10px;background:transparent;color:var(--muted);border:none;border-radius:0;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s;}
+.tab-btn.active{color:var(--primary);background:var(--box-bg);border-bottom:3px solid var(--primary);}
+.tab-btn.ai-tab{color:#6a1b9a;}
+.tab-btn.ai-tab.active{color:#6a1b9a;border-bottom-color:#6a1b9a;}
+
+/* TAB CONTENT */
+.tab-content{display:none;padding:16px;}
+.tab-content.active{display:block;}
+
+/* FORMS */
+.fg{margin-bottom:12px;}
+label{display:block;font-weight:700;margin-bottom:4px;font-size:13px;color:var(--primary-dark);}
+[data-theme="dark"] label{color:#90c695;}
+input,select,textarea{width:100%;padding:10px 12px;border:2px solid var(--border);border-radius:9px;font-size:14px;font-family:inherit;background:var(--input-bg);color:var(--text);outline:none;transition:border .2s;}
+input:focus,select:focus,textarea:focus{border-color:var(--primary);}
+.radio-group{display:flex;gap:10px;flex-wrap:wrap;background:var(--accent2);padding:9px 12px;border-radius:9px;border:2px solid var(--border);}
+.radio-group label{margin:0;font-weight:500;font-size:13px;display:flex;align-items:center;gap:5px;cursor:pointer;text-transform:none;letter-spacing:0;color:var(--text);}
+.radio-group input[type=radio]{width:auto;}
+.dual-input{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.sub-label{font-size:10px;color:var(--muted);margin-bottom:3px;font-weight:600;}
+/* BUTTONS */
+.btn{width:100%;padding:12px;border:none;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:9px;transition:all .2s;}
+.btn:hover{filter:brightness(.9);transform:translateY(-1px);}
+.btn-green{background:var(--primary);color:#fff;}
+.btn-red{background:var(--danger);color:#fff;}
+.btn-blue{background:#0277bd;color:#fff;}
+.btn-orange{background:#e65100;color:#fff;}
+.btn-wa{background:#25D366;color:#fff;}
+.btn-purple{background:#6a1b9a;color:#fff;}
+.btn-income{background:linear-gradient(135deg,#1565c0,#42a5f5);color:#fff;}
+.btn-sm{width:auto;padding:4px 9px;font-size:11px;margin:0;border:none;border-radius:6px;cursor:pointer;color:#fff;font-weight:700;font-family:inherit;}
+
+/* SECTION TITLE & TABLES */
+.stitle{font-size:15px;font-weight:800;color:var(--primary);margin-bottom:14px;padding-bottom:8px;border-bottom:2px solid var(--accent2);font-family:'Baloo Bhai 2';}
+.tbl-wrap{overflow-x:auto;margin-top:12px;border-radius:9px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:460px;}
+th{background:var(--primary);color:#fff;padding:9px 7px;text-align:left;font-size:11px;}
+td{border-bottom:1px solid var(--border);padding:8px 7px;}
+tr:nth-child(even) td{background:var(--table-alt);}
+tr:last-child td{border-bottom:none;}
+.status-paid{color:#2e7d32;font-weight:700;}
+.status-pending{color:#c62828;font-weight:700;}
+.empty td{text-align:center;color:var(--muted);padding:18px;font-style:italic;}
+
+/* SUMMARY & RBAR */
+.summary-box{background:var(--accent2);padding:15px;border-radius:12px;margin:14px 16px;border:1.5px solid var(--border);}
+.summary-box h3{margin-bottom:12px;color:var(--primary);font-size:14px;font-family:'Baloo Bhai 2';}
+.sgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+@media(min-width:480px){.sgrid{grid-template-columns:repeat(4,1fr);}}
+.scard{background:var(--card-bg);border-radius:9px;padding:11px;border:1px solid var(--border);text-align:center;}
+.scard .slabel{font-size:10px;color:var(--muted);margin-bottom:3px;}
+.scard .sval{font-size:18px;font-weight:800;color:var(--primary);font-family:'Baloo Bhai 2';}
+.scard.red .sval{color:var(--danger);}
+.scard.orange .sval{color:#e65100;}
+.scard.green .sval{color:#1b5e20;}
+.scard.blue .sval{color:#0277bd;}
+.net-hero{background:linear-gradient(135deg,#1a6e2e,#43a047);border-radius:14px;padding:18px;margin:14px 16px;color:#fff;text-align:center;}
+.net-hero.loss{background:linear-gradient(135deg,#b71c1c,#e53935);}
+.nh-label{font-size:13px;opacity:.85;margin-bottom:5px;}
+.nh-val{font-size:36px;font-weight:800;font-family:'Baloo Bhai 2';}
+.rbar{background:#fff3e0;border:1.5px solid #ffb74d;border-radius:9px;padding:10px 13px;margin-bottom:12px;font-size:12px;color:#e65100;display:none;}
+[data-theme="dark"] .rbar{background:#2d1a00;border-color:#e65100;color:#ffb74d;}
+.rbar strong{display:block;margin-bottom:2px;}
+
+/* OTHER STYLES */
+.fuel-summary, .income-summary{color:#fff;border-radius:12px;padding:16px;margin-bottom:14px;}
+.fuel-summary{background:linear-gradient(135deg,#bf360c,#e64a19);}
+.income-summary{background:linear-gradient(135deg,#1565c0,#1976d2);}
+.fuel-summary h4, .income-summary h4{margin-bottom:10px;font-size:14px;}
+.fuel-grid, .income-grid{display:grid;gap:8px;}
+.fuel-grid{grid-template-columns:repeat(3,1fr);}
+.income-grid{grid-template-columns:1fr 1fr;}
+.fi, .ini{background:rgba(255,255,255,0.15);border-radius:8px;padding:9px;text-align:center;}
+.fi .fl, .ini .il{font-size:10px;opacity:.85;}
+.fi .fv, .ini .iv{font-size:17px;font-weight:800;font-family:'Baloo Bhai 2';}
+.ini .iv{font-size:20px;}
+.report-filter{display:flex;gap:8px;margin-bottom:13px;flex-wrap:wrap;}
+.report-filter select,.report-filter input{flex:1;min-width:100px;margin:0;}
+.rsummary{background:var(--accent2);border-radius:10px;padding:14px;margin-bottom:13px;border:1.5px solid var(--border);}
+.rrow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--border);font-size:13px;}
+.rrow:last-child{border:none;font-weight:700;font-size:15px;color:var(--primary);}
+.rrow.loss-row{color:var(--danger)!important;}
+.ledger-card{background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;padding:13px;margin-bottom:10px;}
+.lname{font-weight:800;font-size:14px;color:var(--primary);margin-bottom:7px;}
+.lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;text-align:center;}
+.li{background:var(--accent2);border-radius:8px;padding:8px;}
+.li .ll{font-size:10px;color:var(--muted);}
+.li .lv{font-size:14px;font-weight:800;font-family:'Baloo Bhai 2';}
+.li.red{background:#ffebee;}
+[data-theme="dark"] .li.red{background:#2d0a0a;}
+.li.red .lv{color:var(--danger);}
+.li.green .lv{color:#2e7d32;}
+.crop-card{background:#f1f8e9;border:1.5px solid #aed581;border-radius:10px;padding:13px;margin-top:10px;display:none;}
+[data-theme="dark"] .crop-card{background:#1a2910;border-color:#558b2f;}
+.crop-card h4{margin-bottom:9px;color:#33691e;font-size:13px;}
+[data-theme="dark"] .crop-card h4{color:#aed581;}
+.crop-card ul{padding-left:16px;font-size:12px;line-height:1.9;}
+.weather-widget{background:linear-gradient(135deg,#1565c0,#1976d2,#42a5f5);border-radius:12px;padding:16px;margin-bottom:16px;color:#fff;position:relative;overflow:hidden;}
+.weather-widget::before{content:"☁️";position:absolute;right:14px;top:8px;font-size:44px;opacity:.2;}
+.w-top{display:flex;align-items:center;gap:10px;}
+.w-temp{font-size:36px;font-weight:800;font-family:'Baloo Bhai 2';}
+.w-city{font-size:13px;font-weight:700;}
+.w-desc{font-size:11px;opacity:.85;}
+.w-details{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:11px;}
+.wd{background:rgba(255,255,255,0.15);border-radius:8px;padding:7px;text-align:center;}
+.wd .wlbl{font-size:9px;opacity:.8;}
+.wd .wval{font-size:13px;font-weight:700;}
+.vnote{background:var(--card-bg);border:1.5px solid var(--border);border-radius:10px;padding:12px;margin-bottom:9px;}
+.vnote .vt{font-size:12px;color:var(--muted);margin-bottom:5px;}
+.vnote .vc{font-size:13px;line-height:1.6;}
+.rec-indicator{display:none;color:#c62828;font-weight:700;font-size:13px;animation:svcPulse 1s infinite alternate;}
+
+/* ===== OFFLINE AI STYLES ===== */
+.ai-panel{background:linear-gradient(135deg,#4a148c,#6a1b9a);border-radius:14px;padding:16px;margin-bottom:16px;color:#fff;}
+.ai-panel h3{font-size:16px;margin-bottom:3px;}
+.ai-panel p{font-size:11px;opacity:.75;margin:0;}
+.ai-mode-btns{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;}
+.ai-mode-btn{flex:1;min-width:80px;padding:10px 8px;border:2px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.2s;text-align:center;}
+.ai-mode-btn:hover,.ai-mode-btn.active{background:rgba(255,255,255,.25);border-color:#fff;}
+.ai-chat-area{background:var(--card-bg);border-radius:12px;border:1.5px solid var(--border);padding:14px;min-height:160px;max-height:340px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:10px;}
+.ai-msg{padding:10px 13px;border-radius:12px;font-size:13px;line-height:1.7;max-width:95%;}
+.ai-msg.ai{background:var(--accent2);color:var(--text);border:1px solid var(--border);align-self:flex-start;}
+.ai-msg.user{background:linear-gradient(135deg,var(--primary),#43a047);color:#fff;align-self:flex-end;}
+[data-theme="dark"] .ai-msg.ai{background:#1a2a1d;border-color:#2e4d32;}
+.ai-input-row{display:flex;gap:8px;align-items:center;}
+.ai-input-row input{flex:1;margin:0;}
+.btn-ai-send{background:var(--primary);color:#fff;border:none;border-radius:9px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.btn-ai-mic{background:#e65100;color:#fff;border:none;border-radius:9px;padding:10px 14px;font-size:16px;cursor:pointer;}
+.fert-calc{background:var(--card-bg);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;}
+.fert-calc h4{color:var(--primary);margin-bottom:12px;font-size:13px;}
+.fert-result{background:#e8f5e9;border:1.5px solid #a5d6a7;border-radius:10px;padding:12px;margin-top:12px;font-size:13px;color:#1b5e20;display:none;line-height:1.8;}
+[data-theme="dark"] .fert-result{background:#0d2010;border-color:#2e7d32;color:#81c784;}
+.disease-result{background:#fff3e0;border:1.5px solid #ffb74d;border-radius:10px;padding:14px;margin-top:12px;font-size:13px;color:#bf360c;display:none;line-height:1.8;}
+[data-theme="dark"] .disease-result{background:#1f0d00;border-color:#e65100;color:#ffcc80;}
+.disease-result h4{margin-bottom:8px;font-size:14px;}
+.quick-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.qbtn{background:var(--accent2);border:1.5px solid var(--border);color:var(--primary);border-radius:20px;padding:5px 11px;font-size:11px;cursor:pointer;font-family:inherit;font-weight:700;transition:all .2s;}
+.qbtn:hover{background:var(--primary);color:#fff;}
+.qbtn.disease{background:#fff3e0;border-color:#ffb74d;color:#bf360c;}
+.qbtn.disease:hover{background:#e65100;color:#fff;}
+.bottom-actions{padding:0 16px 16px;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div id="authScreen">
+  <div class="auth-logo">
+    <div class="icon">🚜</div>
+    <h1>P.S.B. Farm Manager</h1>
+    <p>आपकी खेती, आपका हिसाब — सब एक जगह</p>
+  </div>
+
+  <div class="auth-card" id="googleAuthCard">
+    <h2>सुरक्षित लॉगिन</h2>
+    <p class="auth-subtitle">अपने Google अकाउंट से एक क्लिक में लॉगिन करें</p>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+      Google से लॉगिन करें
+    </button>
+    <p id="authError"></p>
+  </div>
+</div>
+
+<div id="appScreen">
+  <div class="app-header">
+    <div>
+      <h2>🌾 P.S.B. Farm Manager</h2>
+      <div class="welcome-row">
+        <img id="userProfilePic" src="https://via.placeholder.com/32" class="profile-pic" style="display:none;" alt="Profile">
+        <div class="welcome" id="welcomeText">नमस्ते!</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-icon" onclick="toggleDark()" id="darkBtn">🌙</button>
+      <button class="btn-icon" onclick="logout()">🚪</button>
+    </div>
+  </div>
+
+  <div class="diesel-warning" id="dieselWarning">⚠️ चेतावनी: डीजल का खर्चा ज़्यादा है! मशीन की सर्विस चेक करें।</div>
+  <div class="service-alert" id="serviceAlert">🔧 ट्रैक्टर सर्विस का समय हो गया है! तुरंत सर्विस करवाएं।</div>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('tabHisab',this)">🚜 हिसाब</button>
+    <button class="tab-btn" onclick="switchTab('tabLedger',this)">📒 उधार</button>
+    <button class="tab-btn" onclick="switchTab('tabKheti',this)">🌱 सामग्री</button>
+    <button class="tab-btn" onclick="switchTab('tabFasalBikri',this)">💰 बिक्री</button>
+    <button class="tab-btn" onclick="switchTab('tabFuel',this)">⛽ डीज़ल</button>
+    <button class="tab-btn" onclick="switchTab('tabVoice',this)">🎙️ मेमो</button>
+    <button class="tab-btn" onclick="switchTab('tabSmartKheti',this)">💡 स्मार्ट</button>
+    <button class="tab-btn" onclick="switchTab('tabReport',this)">📊 रिपोर्ट</button>
+    <button class="tab-btn ai-tab" onclick="switchTab('tabOfflineAI',this)">🤖 AI सलाहकार</button>
+  </div>
+
+  <div id="tabHisab" class="tab-content active">
+    <div id="pendingBar" class="rbar"><strong>⚠️ बकाया पेमेंट:</strong><span id="pendingText"></span></div>
+    <div class="stitle">➕ नया काम जोड़ें</div>
+    <div class="fg"><label>तारीख:</label><input type="date" id="hDate"></div>
+    <div class="fg"><label>किसान का नाम:</label><input type="text" id="hFarmer" placeholder="जैसे: रामलाल, श्याम सिंह..."></div>
+    <div class="fg"><label>फसल/खेत का नाम:</label><input type="text" id="hFasal" placeholder="उदा: खेत 1, गेहूं का खेत..."></div>
+    <div class="fg">
+      <label>मशीन / काम:</label>
+      <select id="hWorkType" onchange="checkTrolley()">
+        <option value="कल्टीवेटर">🔧 कल्टीवेटर</option>
+        <option value="रोटावेटर">🔧 रोटावेटर</option>
+        <option value="हैरो">🔧 हैरो</option>
+        <option value="कतार (Seed Drill)">🌱 कतार (Seed Drill)</option>
+        <option value="लेवलर (गोड़ी)">🔨 लेवलर (गोड़ी)</option>
+        <option value="थ्रेशर">⚙️ थ्रेशर</option>
+        <option value="हार्वेस्टर (कंबाइन)">🌾 हार्वेस्टर</option>
+        <option value="स्प्रे पंप">💦 स्प्रे पंप</option>
+        <option value="ट्रॉली (ढुलाई)">🚛 ट्रॉली</option>
+        <option value="मजदूरी">👷 मजदूरी</option>
+        <option value="अन्य">📋 अन्य</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>माप का तरीका:</label>
+      <div class="radio-group">
+        <label><input type="radio" name="hUnit" value="घंटा" checked onchange="updateHLabel()"> ⏱️ घंटा</label>
+        <label><input type="radio" name="hUnit" value="बीघा" onchange="updateHLabel()"> 🌾 बीघा</label>
+        <label id="khepRadio" style="display:none;"><input type="radio" name="hUnit" value="खेप" onchange="updateHLabel()"> 🚛 खेप</label>
+      </div>
+    </div>
+    <div id="timeInputDiv" class="fg">
+      <label>काम का समय:</label>
+      <div class="dual-input">
+        <div><div class="sub-label">⏱️ घंटे</div><input type="number" id="hHours" placeholder="0" min="0"></div>
+        <div><div class="sub-label">🕐 मिनट (0-59)</div><input type="number" id="hMinutes" placeholder="0" min="0" max="59"></div>
+      </div>
+    </div>
+    <div id="bighaInputDiv" class="fg" style="display:none;">
+      <label>ज़मीन का माप:</label>
+      <div class="dual-input">
+        <div><div class="sub-label">🌾 बीघा</div><input type="number" id="hBigha" placeholder="0" min="0"></div>
+        <div><div class="sub-label">🌿 बिस्वा (1बीघा=20)</div><input type="number" id="hBiswa" placeholder="0" min="0" max="19"></div>
+      </div>
+    </div>
+    <div id="khepInputDiv" class="fg" style="display:none;">
+      <label>कितनी खेप:</label><input type="number" id="hKhep" placeholder="0" min="0">
+    </div>
+    <div class="fg"><label id="hRateLabel">किराया प्रति घंटा (₹):</label><input type="number" id="hRate" placeholder="0"></div>
+    <div class="fg">
+      <label>कुल रकम (₹) — <small style="color:var(--muted);font-weight:400;">खाली छोड़ सकते हैं</small></label>
+      <input type="number" id="hTotal" placeholder="ऑटो कैलकुलेट होगा">
+    </div>
+    <div class="fg">
+      <label>पेमेंट स्टेटस:</label>
+      <select id="hStatus">
+        <option value="Pending">❌ बाकी है (Pending)</option>
+        <option value="Paid">✅ मिल गया (Paid)</option>
+      </select>
+    </div>
+    <button class="btn btn-green" onclick="addHisab()">➕ काम जोड़ें</button>
+    <div class="tbl-wrap">
+      <table><thead><tr><th>तारीख</th><th>किसान</th><th>मशीन</th><th>माप</th><th>₹</th><th>स्टेटस</th><th>Edit</th><th>Del</th></tr></thead>
+      <tbody id="hisabBody"></tbody></table>
+    </div>
+  </div>
+    <div id="tabLedger" class="tab-content">
+    <div class="stitle">📒 उधार खाता (किसान-वार हिसाब)</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">हर किसान का कुल काम, मिली रकम और बकाया यहाँ दिखता है।</p>
+    <div class="fg"><label>किसान चुनें:</label>
+      <select id="ledgerFarmerSelect" onchange="showLedgerDetail()"><option value="">-- किसान चुनें --</option></select>
+    </div>
+    <div id="ledgerDetail"></div>
+    <hr style="margin:16px 0;border-color:var(--border);">
+    <div class="stitle">💳 किश्त / पेमेंट जोड़ें</div>
+    <div class="fg"><label>किसान का नाम:</label><input type="text" id="payFarmer" placeholder="नाम डालें"></div>
+    <div class="fg"><label>तारीख:</label><input type="date" id="payDate"></div>
+    <div class="fg"><label>रकम (₹):</label><input type="number" id="payAmount" placeholder="0"></div>
+    <div class="fg"><label>नोट:</label><input type="text" id="payNote" placeholder="जैसे: पहली किश्त"></div>
+    <button class="btn btn-blue" onclick="addPayment()">💰 पेमेंट जोड़ें</button>
+    <div id="allLedgerCards" style="margin-top:10px;"></div>
+  </div>
+
+  <div id="tabKheti" class="tab-content">
+    <div class="stitle">🌱 खेती सामग्री खर्च</div>
+    <div class="fg"><label>तारीख:</label><input type="date" id="kDate"></div>
+    <div class="fg"><label>श्रेणी:</label>
+      <select id="kCategory" onchange="updateItemOptions()">
+        <option value="बीज">🌱 बीज</option>
+        <option value="खाद">🧪 खाद</option>
+        <option value="दवाई">💊 दवाई</option>
+        <option value="यंत्र">🔧 यंत्र</option>
+      </select>
+    </div>
+    <div class="fg"><label>सामग्री:</label><select id="kItemSelect" onchange="checkCustomItem()"></select></div>
+    <div class="fg" id="customItemDiv" style="display:none;"><label>सामग्री का नाम:</label><input type="text" id="kCustomItem" placeholder="नाम लिखें"></div>
+    <div class="fg"><label>मात्रा:</label><input type="number" id="kQty" placeholder="0" step="0.1"></div>
+    <div class="fg"><label>कुल खर्च (₹):</label><input type="number" id="kCost" placeholder="0"></div>
+    <button class="btn btn-green" onclick="addKheti()">➕ बिल जोड़ें</button>
+    <div class="tbl-wrap">
+      <table><thead><tr><th>तारीख</th><th>श्रेणी</th><th>सामग्री</th><th>मात्रा</th><th>₹</th><th>Del</th></tr></thead>
+      <tbody id="khetiBody"></tbody></table>
+    </div>
+  </div>
+
+  <div id="tabFasalBikri" class="tab-content">
+    <div class="income-summary" id="incomeSummary">
+      <h4>💰 फसल बिक्री — कुल आमदनी</h4>
+      <div class="income-grid">
+        <div class="ini"><div class="il">कुल बिक्री रकम</div><div class="iv">₹<span id="iTotalIncome">0</span></div></div>
+        <div class="ini"><div class="il">कुल एंट्री</div><div class="iv"><span id="iEntryCount">0</span></div></div>
+      </div>
+    </div>
+    <div class="stitle">➕ फसल बिक्री एंट्री</div>
+    <div class="fg"><label>तारीख:</label><input type="date" id="iDate"></div>
+    <div class="fg"><label>फसल:</label>
+      <select id="iFasal">
+        <option>🌾 गेहूं</option><option>🫘 सोयाबीन</option><option>🟡 चना</option>
+        <option>🌽 मक्का</option><option>🌻 सरसों</option><option>🌿 कपास</option>
+        <option>🌾 धान</option><option>🧅 प्याज</option><option>🧄 लहसुन</option><option>📋 अन्य</option>
+      </select>
+    </div>
+    <div class="fg"><label>व्यापारी / खरीदार:</label><input type="text" id="iTrader" placeholder="जैसे: रामजी व्यापारी, मंडी..."></div>
+    <div class="fg"><label>मात्रा (क्विंटल/किलो):</label><input type="number" id="iQty" placeholder="0" step="0.5"></div>
+    <div class="fg"><label>कुल मिले रुपये (₹):</label><input type="number" id="iAmount" placeholder="0"></div>
+    <div class="fg"><label>नोट:</label><input type="text" id="iNote" placeholder="जैसे: पहली खेप..."></div>
+    <button class="btn btn-income" onclick="addFasalBikri()">💰 बिक्री दर्ज करें</button>
+    <div class="tbl-wrap">
+      <table><thead><tr><th>तारीख</th><th>फसल</th><th>व्यापारी</th><th>मात्रा</th><th>मिले ₹</th><th>Del</th></tr></thead>
+      <tbody id="incomeBody"></tbody></table>
+    </div>
+  </div>
+
+  <div id="tabFuel" class="tab-content">
+    <div class="fuel-summary" id="fuelSummary">
+      <h4>⛽ डीज़ल ट्रैकर — इस महीने</h4>
+      <div class="fuel-grid">
+        <div class="fi"><div class="fl">कुल डीज़ल खर्च</div><div class="fv">₹<span id="fTotalCost">0</span></div></div>
+        <div class="fi"><div class="fl">कुल लीटर</div><div class="fv"><span id="fTotalLtr">0</span> L</div></div>
+        <div class="fi"><div class="fl">इस महीने Paid</div><div class="fv">₹<span id="fMonthPaid">0</span></div></div>
+      </div>
+    </div>
+    <div class="stitle">⛽ डीज़ल / तेल एंट्री</div>
+    <div class="fg"><label>तारीख:</label><input type="date" id="fDate"></div>
+    <div class="fg"><label>प्रकार:</label>
+      <select id="fType">
+        <option value="डीज़ल">⛽ डीज़ल</option><option value="मोबिल ऑयल">🛢️ मोबिल ऑयल</option>
+        <option value="हाइड्रोलिक ऑयल">🔧 हाइड्रोलिक ऑयल</option><option value="ग्रीस">⚙️ ग्रीस</option>
+        <option value="अन्य">📋 अन्य</option>
+      </select>
+    </div>
+    <div class="fg"><label>लीटर / मात्रा:</label><input type="number" id="fLtr" placeholder="0" step="0.5"></div>
+    <div class="fg"><label>रकम (₹):</label><input type="number" id="fCost" placeholder="0"></div>
+    <div class="fg"><label>नोट:</label><input type="text" id="fNote" placeholder="जैसे: सुबह काम के लिए..."></div>
+    <button class="btn btn-orange" onclick="addFuel()">➕ डीज़ल जोड़ें</button>
+    <hr style="margin:14px 0;border-color:var(--border);">
+    <div class="stitle">🔧 सर्विस रिमाइंडर</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;">कुल घंटों का जोड़ इतना होने पर अलर्ट दें:</div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <input type="number" id="serviceLimit" placeholder="उदा: 250" style="flex:1;">
+      <button class="btn btn-red" style="width:auto;padding:10px 18px;margin:0;" onclick="setServiceLimit()">✅ सेट करें</button>
+    </div>
+    <p id="serviceLimitStatus" style="font-size:12px;color:var(--muted);margin-top:8px;"></p>
+    <div class="tbl-wrap" style="margin-top:14px;">
+      <table><thead><tr><th>तारीख</th><th>प्रकार</th><th>लीटर</th><th>₹</th><th>नोट</th><th>Del</th></tr></thead>
+      <tbody id="fuelBody"></tbody></table>
+    </div>
+  </div>
+
+  <div id="tabVoice" class="tab-content">
+    <div class="stitle">🎙️ वॉइस मेमो</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">हाथ गंदे हों तो बोलकर नोट करें।</p>
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;">
+      <button class="btn btn-orange" style="width:auto;padding:12px 20px;font-size:16px;margin:0;" onclick="startRecording()" id="recBtn">🎤 रिकॉर्ड करें</button>
+      <button class="btn btn-red" style="width:auto;padding:12px 16px;font-size:16px;margin:0;display:none;" onclick="stopRecording()" id="stopBtn">⏹️ रोकें</button>
+      <div class="rec-indicator" id="recIndicator">🔴 रिकॉर्डिंग हो रही है...</div>
+    </div>
+    <div class="fg" style="margin-top:10px;"><label>या टाइप करके नोट जोड़ें:</label>
+      <textarea id="manualNote" rows="3" placeholder="कोई भी बात लिख दें..."></textarea>
+    </div>
+    <button class="btn btn-blue" onclick="saveManualNote()">💾 नोट सेव करें</button>
+    <div class="stitle" style="margin-top:16px;">📋 सेव किए गए नोट्स</div>
+    <div id="voiceNotesList"></div>
+  </div>
+
+  <div id="tabSmartKheti" class="tab-content">
+    <div class="stitle">🌦️ मौसम जानकारी</div>
+    <div class="weather-widget" id="weatherWidget">
+      <div id="weatherLoading" style="text-align:center;opacity:.8;padding:10px;">⏳ लोड हो रहा है...</div>
+      <div id="weatherData" style="display:none;">
+        <div class="w-top">
+          <div class="w-temp" id="wTemp">--°C</div>
+          <div><div class="w-city" id="wCity">आपका स्थान</div><div class="w-desc" id="wDesc"></div></div>
+        </div>
+        <div class="w-details">
+          <div class="wd"><div class="wlbl">नमी</div><div class="wval" id="wHum">--</div></div>
+          <div class="wd"><div class="wlbl">हवा</div><div class="wval" id="wWind">--</div></div>
+          <div class="wd"><div class="wlbl">महसूस</div><div class="wval" id="wFeel">--</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="stitle">💡 फसल-वार सलाह</div>
+    <div class="fg"><label>फसल चुनें:</label>
+      <select id="smartCropSelect" onchange="showCropInfo()">
+        <option value="">-- फसल चुनें --</option>
+        <option value="गेहूं">🌾 गेहूं</option><option value="सोयाबीन">🫘 सोयाबीन</option>
+        <option value="चना">🟡 चना</option><option value="मक्का">🌽 मक्का</option>
+        <option value="सरसों">🌻 सरसों</option><option value="कपास">🌿 कपास</option>
+        <option value="धान">🌾 धान</option><option value="प्याज">🧅 प्याज</option>
+        <option value="लहसुन">🧄 लहसुन</option>
+      </select>
+    </div>
+    <div id="cropInfoCard" class="crop-card"></div>
+  </div>
+    <div id="tabReport" class="tab-content">
+    <div class="stitle">📊 रिपोर्ट और हिसाब</div>
+    <div class="report-filter">
+      <select id="reportMonth">
+        <option value="all">सभी महीने</option>
+        <option value="0">जनवरी</option><option value="1">फरवरी</option><option value="2">मार्च</option>
+        <option value="3">अप्रैल</option><option value="4">मई</option><option value="5">जून</option>
+        <option value="6">जुलाई</option><option value="7">अगस्त</option><option value="8">सितंबर</option>
+        <option value="9">अक्टूबर</option><option value="10">नवंबर</option><option value="11">दिसंबर</option>
+      </select>
+      <select id="reportYear">
+        <option value="2024">2024</option><option value="2025">2025</option>
+        <option value="2026" selected>2026</option><option value="all">सभी साल</option>
+      </select>
+      <button class="btn btn-green" style="width:auto;padding:10px 16px;margin:0;" onclick="generateReport()">🔍 देखें</button>
+    </div>
+    <div id="reportSummary" class="rsummary" style="display:none;">
+      <div class="rrow"><span>🚜 मशीन काम (कुल):</span><span id="rTH">₹0</span></div>
+      <div class="rrow"><span>✅ मिली रकम:</span><span id="rPaid" style="color:#2e7d32;">₹0</span></div>
+      <div class="rrow"><span>❌ बाकी रकम:</span><span id="rPend" style="color:#c62828;">₹0</span></div>
+      <div class="rrow"><span>💰 फसल बिक्री:</span><span id="rIncome" style="color:#1565c0;">₹0</span></div>
+      <div class="rrow"><span>🌱 खेती खर्च:</span><span id="rK">₹0</span></div>
+      <div class="rrow"><span>⛽ डीज़ल खर्च:</span><span id="rFuel" style="color:#e65100;">₹0</span></div>
+      <div class="rrow" id="rNetRow"><span id="rNetLabel">💰 शुद्ध मुनाफा:</span><span id="rNet">₹0</span></div>
+    </div>
+    <button class="btn btn-wa" onclick="shareOnWhatsApp()">📱 WhatsApp पर भेजें</button>
+    <button class="btn btn-blue" onclick="printReport()">🖨️ Print / PDF</button>
+    <button class="btn btn-purple" onclick="exportCSV()">📥 CSV Export</button>
+    <button class="btn" style="background:#5d4037;color:#fff;" onclick="exportTXT()">📄 TXT Export</button>
+  </div>
+
+  <div id="tabOfflineAI" class="tab-content">
+    <div class="ai-panel">
+      <h3>🤖 Offline Kheti AI सलाहकार</h3>
+      <p>बिना इंटरनेट के भी काम करे • 100% हिंदी • खेती की पूरी जानकारी</p>
+    </div>
+    <div class="ai-mode-btns">
+      <button class="ai-mode-btn active" id="modeChat" onclick="setAIMode('chat')">💬 सवाल पूछें</button>
+      <button class="ai-mode-btn" id="modeFert" onclick="setAIMode('fert')">🧪 खाद कैलकुलेटर</button>
+      <button class="ai-mode-btn" id="modeDisease" onclick="setAIMode('disease')">🦠 रोग पहचानें</button>
+      <button class="ai-mode-btn" id="modeCrop" onclick="setAIMode('crop')">🌾 फसल सलाह</button>
+    </div>
+    <div id="aiModeChat">
+      <div class="ai-chat-area" id="aiChatArea"><div class="ai-msg ai">🙏 नमस्ते! मैं आपका Offline Kheti AI हूँ। आप मुझसे खेती, फसल, रोग, कीट, खाद या किसी भी कृषि-सम्बन्धी सवाल पूछ सकते हैं।</div></div>
+      <div class="ai-input-row">
+        <button class="btn-ai-mic" onclick="startAIVoice()" title="बोलकर पूछें">🎤</button>
+        <input type="text" id="aiChatInput" placeholder="सवाल लिखें या बोलें..." onkeydown="if(event.key==='Enter')sendAIChat()">
+        <button class="btn-ai-send" onclick="sendAIChat()">पूछें</button>
+      </div>
+      <div class="quick-btns" style="margin-top:12px;">
+        <button class="qbtn" onclick="quickAIChat('गेहूं में पीलापन है क्या करें')">गेहूं पीलापन</button>
+        <button class="qbtn" onclick="quickAIChat('सरसों में चेपा (माहू) है')">सरसों चेपा</button>
+        <button class="qbtn" onclick="quickAIChat('सोयाबीन में खरपतवार नाशक')">सोयाबीन खरपतवार</button>
+        <button class="qbtn" onclick="quickAIChat('चना में उखटा रोग')">चना उखटा रोग</button>
+      </div>
+    </div>
+    <div id="aiModeFert" style="display:none;">
+      <div class="fert-calc">
+        <h4>🧪 खाद की सही मात्रा कैलकुलेटर</h4>
+        <div class="fg"><label>फसल चुनें:</label><select id="fcFasal"><option value="गेहूं">🌾 गेहूं</option><option value="सरसों">🌻 सरसों</option><option value="चना">🟡 चना</option><option value="सोयाबीन">🫘 सोयाबीन</option><option value="मक्का">🌽 मक्का</option><option value="धान">🌾 धान</option></select></div>
+        <div class="fg"><label>खेत का क्षेत्रफल:</label><div class="dual-input"><div><div class="sub-label">🌾 बीघा</div><input type="number" id="fcBigha" placeholder="0" min="0"></div><div><div class="sub-label">🌿 बिस्वा</div><input type="number" id="fcBiswa" placeholder="0" min="0" max="19"></div></div></div>
+        <button class="btn btn-green" onclick="calcFertilizer()">🧮 खाद की मात्रा निकालें</button>
+        <div class="fert-result" id="fertResult"></div>
+      </div>
+    </div>
+    <div id="aiModeDisease" style="display:none;">
+      <div class="fert-calc">
+        <h4>🦠 रोग / कीट पहचान और इलाज</h4>
+        <div class="fg"><label>फसल चुनें:</label><select id="dcFasal" onchange="loadDiseaseList()"><option value="गेहूं">🌾 गेहूं</option><option value="सरसों">🌻 सरसों</option><option value="चना">🟡 चना</option><option value="सोयाबीन">🫘 सोयाबीन</option><option value="मक्का">🌽 मक्का</option><option value="धान">🌾 धान</option></select></div>
+        <div class="fg"><label>रोग / कीट चुनें:</label><select id="dcDisease"></select></div>
+        <button class="btn btn-orange" onclick="showDiseaseInfo()">🔍 इलाज और दवाई देखें</button>
+        <div class="disease-result" id="diseaseResult"></div>
+      </div>
+    </div>
+    <div id="aiModeCrop" style="display:none;">
+      <div class="fert-calc">
+        <h4>🌾 फसल-वार पूरी जानकारी</h4>
+        <div class="fg"><label>फसल चुनें:</label><select id="cropAdvSel" onchange="showCropAdvice()"><option value="">-- फसल चुनें --</option><option value="गेहूं">🌾 गेहूं</option><option value="सरसों">🌻 सरसों</option><option value="चना">🟡 चना</option><option value="सोयाबीन">🫘 सोयाबीन</option><option value="मक्का">🌽 मक्का</option><option value="धान">🌾 धान</option></select></div>
+        <div id="cropAdvResult"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="net-hero" id="netHeroBox">
+    <div class="nh-label" id="netHeroLabel">📈 शुद्ध मुनाफा (फसल बिक्री − मशीन खर्च − खेती खर्च)</div>
+    <div class="nh-val">₹<span id="netHeroVal">0</span></div>
+  </div>
+  <div class="summary-box">
+    <h3>📈 कुल सारांश</h3>
+    <div class="sgrid">
+      <div class="scard"><div class="slabel">🚜 मशीन काम</div><div class="sval">₹<span id="totH">0</span></div></div>
+      <div class="scard red"><div class="slabel">❌ बाकी पेमेंट</div><div class="sval">₹<span id="totPend">0</span></div></div>
+      <div class="scard green"><div class="slabel">✅ मिली रकम</div><div class="sval">₹<span id="totPaid">0</span></div></div>
+      <div class="scard blue"><div class="slabel">💰 फसल बिक्री</div><div class="sval">₹<span id="totIncome">0</span></div></div>
+      <div class="scard"><div class="slabel">🌱 खेती खर्च</div><div class="sval">₹<span id="totK">0</span></div></div>
+      <div class="scard orange"><div class="slabel">⛽ डीज़ल खर्च</div><div class="sval">₹<span id="totFuel">0</span></div></div>
+    </div>
+  </div>
+  <div class="bottom-actions"><button class="btn btn-red" onclick="clearAllData()">🗑️ पूरा डेटा डिलीट करें</button></div>
+</div></div><div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:var(--box-bg);border-radius:16px;padding:22px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto;">
+    <h3 style="color:var(--primary);margin-bottom:16px;">✏️ एंट्री एडिट करें</h3>
+    <input type="hidden" id="editKey">
+    <div class="fg"><label>किसान:</label><input type="text" id="editFarmer"></div>
+    <div class="fg"><label>काम:</label><input type="text" id="editWork"></div>
+    <div class="fg"><label>कुल रकम (₹):</label><input type="number" id="editTotal"></div>
+    <div class="fg"><label>स्टेटस:</label><select id="editStatus"><option value="Pending">❌ Pending</option><option value="Paid">✅ Paid</option></select></div>
+    <button class="btn btn-green" onclick="saveEdit()">💾 सेव करें</button>
+    <button class="btn btn-red" onclick="closeEditModal()">❌ रद्द करें</button>
+  </div>
+</div>
+
+<script>
+// ===================== FIREBASE =====================
+const firebaseConfig={
+  apiKey:"AIzaSyBmLqvofpxrEoIBmBoHlssG6Alau1N3ruw",
+  authDomain:"psb-studio.firebaseapp.com",
+  databaseURL:"https://psb-studio-default-rtdb.firebaseio.com",
+  projectId:"psb-studio",
+  storageBucket:"psb-studio.firebasestorage.app",
+  messagingSenderId:"703528049927",
+  appId:"1:703528049927:web:cd7968fdc66eb9b427f9a2"
+};
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(), db=firebase.database();
+const provider = new firebase.auth.GoogleAuthProvider(); // Added Google Provider
+let userRef=null, allRecords={};
+
+// ===================== GOOGLE AUTH =====================
+auth.onAuthStateChanged(user=>{
+  if(user){
+    document.getElementById('authScreen').style.display='none';
+    document.getElementById('appScreen').style.display='block';
+    userRef=db.ref('FarmUsers/'+user.uid);
+    
+    // Set Profile Data
+    let uName = user.displayName || 'किसान';
+    document.getElementById('welcomeText').innerText = 'नमस्ते, ' + uName + ' जी! 🙏';
+    if(user.photoURL){
+      document.getElementById('userProfilePic').src = user.photoURL;
+      document.getElementById('userProfilePic').style.display = 'block';
+    }
+
+    // Update simple profile info in DB
+    userRef.child('profile').update({
+      name: uName,
+      email: user.email || '',
+      lastLogin: firebase.database.ServerValue.TIMESTAMP
+    });
+
+    loadData();
+    userRef.child('profile').once('value',s=>{
+      let p=s.val();
+      if(p&&p.serviceLimit){document.getElementById('serviceLimitStatus').innerText='सर्विस अलर्ट: '+p.serviceLimit+' घंटे पर सेट है';document.getElementById('serviceLimit').value=p.serviceLimit;}
+    });
+    userRef.child('profile/darkMode').once('value',s=>{if(s.val()) setDark(true);});
+    ['hDate','kDate','fDate','payDate','iDate'].forEach(id=>{let el=document.getElementById(id);if(el) el.valueAsDate=new Date();});
+    updateItemOptions();
+    loadWeather();
+    loadVoiceNotes();
+    loadDiseaseList();
+    document.getElementById('reportYear').value=new Date().getFullYear();
+    document.getElementById('reportMonth').value=new Date().getMonth();
+  } else {
+    document.getElementById('authScreen').style.display='flex';
+    document.getElementById('appScreen').style.display='none';
+  }
+});
+
+function signInWithGoogle(){
+  document.getElementById('authError').innerText = '⏳ कृपया प्रतीक्षा करें...';
+  auth.signInWithPopup(provider).catch(e => {
+    document.getElementById('authError').innerText = '❌ ' + e.message;
+  });
+}
+
+function logout(){
+  if(userRef) userRef.child('profile').update({online:false,lastSeen:Date.now()});
+  auth.signOut();
+}
+
+// ===================== DARK MODE & TABS =====================
+function toggleDark(){let d=document.documentElement.getAttribute('data-theme')==='dark';setDark(!d);if(userRef) userRef.child('profile/darkMode').set(!d);}
+function setDark(on){document.documentElement.setAttribute('data-theme',on?'dark':'light');document.getElementById('darkBtn').innerText=on?'☀️':'🌙';}
+
+function switchTab(id,btn){
+  document.querySelectorAll('.tab-content').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(e=>e.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(id==='tabReport') generateReport();
+  if(id==='tabLedger') renderLedger();
+  if(id==='tabFuel') updateFuelSummary();
+  if(id==='tabFasalBikri') updateIncomeSummary();
+}
+// ===================== HISAB =====================
+function checkTrolley(){
+  let wt=document.getElementById('hWorkType').value;
+  let kr=document.getElementById('khepRadio');
+  if(wt==='ट्रॉली (ढुलाई)'){kr.style.display='inline-flex';document.querySelector('input[name="hUnit"][value="खेप"]').checked=true;}
+  else{kr.style.display='none';document.querySelector('input[name="hUnit"][value="घंटा"]').checked=true;}
+  updateHLabel();
+}
+function updateHLabel(){
+  let u=document.querySelector('input[name="hUnit"]:checked').value;
+  document.getElementById('timeInputDiv').style.display=(u==='घंटा')?'block':'none';
+  document.getElementById('bighaInputDiv').style.display=(u==='बीघा')?'block':'none';
+  document.getElementById('khepInputDiv').style.display=(u==='खेप')?'block':'none';
+  let rateLabels={'घंटा':'किराया प्रति घंटा (₹):','बीघा':'किराया प्रति बीघा (₹):','खेप':'किराया प्रति खेप (₹):'};
+  document.getElementById('hRateLabel').innerText=rateLabels[u];
+  autoCalcTotal();
+}
+function autoCalcTotal(){
+  let u=document.querySelector('input[name="hUnit"]:checked').value;
+  let rate=parseFloat(document.getElementById('hRate').value)||0,qty=0;
+  if(u==='घंटा'){let h=parseFloat(document.getElementById('hHours').value)||0,m=parseFloat(document.getElementById('hMinutes').value)||0;qty=h+(m/60);}
+  else if(u==='बीघा'){let b=parseFloat(document.getElementById('hBigha').value)||0,bw=parseFloat(document.getElementById('hBiswa').value)||0;qty=b+(bw/20);}
+  else qty=parseFloat(document.getElementById('hKhep').value)||0;
+  if(qty>0&&rate>0) document.getElementById('hTotal').value=(qty*rate).toFixed(2);
+}
+['hHours','hMinutes','hBigha','hBiswa','hKhep','hRate'].forEach(id=>{let el=document.getElementById(id);if(el) el.addEventListener('input',autoCalcTotal);});
+
+function addHisab(){
+  let u=document.querySelector('input[name="hUnit"]:checked').value,qty=0,qtyDisplay='';
+  if(u==='घंटा'){let h=parseFloat(document.getElementById('hHours').value)||0,m=parseFloat(document.getElementById('hMinutes').value)||0;qty=+(h+(m/60)).toFixed(4);qtyDisplay=h+'घंटे '+(m?m+'मिनट':'');}
+  else if(u==='बीघा'){let b=parseFloat(document.getElementById('hBigha').value)||0,bw=parseFloat(document.getElementById('hBiswa').value)||0;qty=+(b+(bw/20)).toFixed(4);qtyDisplay=b+'बीघा '+(bw?bw+'बिस्वा':'');}
+  else{qty=parseFloat(document.getElementById('hKhep').value)||0;qtyDisplay=qty+' खेप';}
+  let rate=parseFloat(document.getElementById('hRate').value)||0;
+  let totalInput=parseFloat(document.getElementById('hTotal').value);
+  let total=isNaN(totalInput)?null:totalInput;
+  if(total===null&&qty>0&&rate>0) total=+(qty*rate).toFixed(2);
+  let d={date:document.getElementById('hDate').value,farmer:document.getElementById('hFarmer').value.trim()||'अज्ञात',fasal:document.getElementById('hFasal').value,workType:document.getElementById('hWorkType').value,unit:u,qty,qtyDisplay,rate,total,status:document.getElementById('hStatus').value,type:'hisab',timestamp:firebase.database.ServerValue.TIMESTAMP};
+  if(!d.date){alert('तारीख भरें!');return;}
+  userRef.child('Records').push(d);
+  ['hHours','hMinutes','hBigha','hBiswa','hKhep','hRate','hTotal'].forEach(id=>document.getElementById(id).value='');
+  alert('✅ काम जोड़ा गया!');
+}
+
+function openEditModal(key){
+  let d=allRecords[key];if(!d)return;
+  document.getElementById('editKey').value=key;
+  document.getElementById('editFarmer').value=d.farmer||'';
+  document.getElementById('editWork').value=d.workType||'';
+  document.getElementById('editTotal').value=d.total||'';
+  document.getElementById('editStatus').value=d.status||'Pending';
+  document.getElementById('editModal').style.display='flex';
+}
+function closeEditModal(){document.getElementById('editModal').style.display='none';}
+function saveEdit(){
+  let key=document.getElementById('editKey').value;
+  let total=parseFloat(document.getElementById('editTotal').value);
+  userRef.child('Records/'+key).update({farmer:document.getElementById('editFarmer').value.trim(),workType:document.getElementById('editWork').value.trim(),total:isNaN(total)?null:total,status:document.getElementById('editStatus').value}).then(()=>{closeEditModal();alert('✅ एंट्री अपडेट हो गई!');});
+}
+
+// ===================== KHETI & FASAL =====================
+const itemsList={"बीज":["गेहूं बीज","सरसों बीज","चना बीज","सोयाबीन बीज","मक्का बीज","धान बीज","अन्य (लिखें)"],"खाद":["यूरिया (Urea)","डीएपी (DAP)","सुपर (SSP)","पोटाश (MOP)","जिंक","NPK मिक्सर","अन्य (लिखें)"],"दवाई":["कीटनाशक","खरपतवार नाशक","फंगीसाइड","मिक्सर स्प्रे","अन्य (लिखें)"],"यंत्र":["ट्रैक्टर पार्ट्स","पंप रिपेयर","हार्डवेयर/नट-बोल्ट","तेल/ग्रीस","अन्य (लिखें)"]};
+function updateItemOptions(){let cat=document.getElementById('kCategory').value,sel=document.getElementById('kItemSelect');sel.innerHTML='';itemsList[cat].forEach(i=>sel.innerHTML+=`<option>${i}</option>`);checkCustomItem();}
+function checkCustomItem(){let v=document.getElementById('kItemSelect').value;document.getElementById('customItemDiv').style.display=(v==="अन्य (लिखें)")?'block':'none';}
+function addKheti(){
+  let item=document.getElementById('kItemSelect').value;
+  if(item==="अन्य (लिखें)") item=document.getElementById('kCustomItem').value;
+  let d={date:document.getElementById('kDate').value,category:document.getElementById('kCategory').value,itemName:item,qty:parseFloat(document.getElementById('kQty').value)||0,total:parseFloat(document.getElementById('kCost').value),type:'kheti',timestamp:firebase.database.ServerValue.TIMESTAMP};
+  if(!d.date||!d.itemName||isNaN(d.total))return alert('सभी बॉक्स भरें!');
+  userRef.child('Records').push(d);
+  document.getElementById('kQty').value='';document.getElementById('kCost').value='';document.getElementById('kCustomItem').value='';
+  alert('✅ बिल जोड़ा गया!');
+}
+
+function addFasalBikri(){
+  let d={date:document.getElementById('iDate').value,fasal:document.getElementById('iFasal').value,trader:document.getElementById('iTrader').value.trim()||'—',qty:parseFloat(document.getElementById('iQty').value)||0,total:parseFloat(document.getElementById('iAmount').value),note:document.getElementById('iNote').value,type:'income',timestamp:firebase.database.ServerValue.TIMESTAMP};
+  if(!d.date||isNaN(d.total)||d.total<=0)return alert('तारीख और रकम भरें!');
+  userRef.child('Records').push(d);
+  ['iTrader','iQty','iAmount','iNote'].forEach(id=>document.getElementById(id).value='');
+  alert('✅ फसल बिक्री दर्ज हो गई!');
+}
+function updateIncomeSummary(){
+  let total=0,count=0;
+  Object.values(allRecords).forEach(d=>{if(d.type==='income'){total+=d.total||0;count++;}});
+  document.getElementById('iTotalIncome').innerText=total.toFixed(2);
+  document.getElementById('iEntryCount').innerText=count;
+}
+
+// ===================== FUEL & LEDGER =====================
+function addFuel(){
+  let d={date:document.getElementById('fDate').value,ftype:document.getElementById('fType').value,ltr:parseFloat(document.getElementById('fLtr').value)||0,total:parseFloat(document.getElementById('fCost').value),note:document.getElementById('fNote').value,type:'fuel',timestamp:firebase.database.ServerValue.TIMESTAMP};
+  if(!d.date||isNaN(d.total))return alert('तारीख और रकम भरें!');
+  userRef.child('Records').push(d);
+  ['fLtr','fCost','fNote'].forEach(id=>document.getElementById(id).value='');
+  alert('✅ डीज़ल जोड़ा गया!');
+}
+function setServiceLimit(){
+  let v=parseInt(document.getElementById('serviceLimit').value);
+  if(!v||v<1)return alert('सही घंटे डालें');
+  userRef.child('profile/serviceLimit').set(v);
+  document.getElementById('serviceLimitStatus').innerText='✅ अलर्ट सेट: '+v+' घंटे पर';
+  checkServiceAlert();
+}
+function updateFuelSummary(){
+  let m=new Date().getMonth(),y=new Date().getFullYear(),totalCost=0,totalLtr=0,monthPaid=0;
+  Object.values(allRecords).forEach(d=>{
+    if(d.type==='fuel'){let dt=new Date(d.date);if(dt.getMonth()===m&&dt.getFullYear()===y){totalCost+=d.total||0;totalLtr+=d.ltr||0;}}
+    if(d.type==='hisab'){let dt=new Date(d.date);if(dt.getMonth()===m&&dt.getFullYear()===y&&d.status==='Paid')monthPaid+=d.total||0;}
+  });
+  document.getElementById('fTotalCost').innerText=totalCost.toFixed(2);
+  document.getElementById('fTotalLtr').innerText=totalLtr.toFixed(1);
+  document.getElementById('fMonthPaid').innerText=monthPaid.toFixed(2);
+}
+function addPayment(){
+  let d={farmer:document.getElementById('payFarmer').value.trim(),date:document.getElementById('payDate').value,amount:parseFloat(document.getElementById('payAmount').value),note:document.getElementById('payNote').value,type:'payment',timestamp:firebase.database.ServerValue.TIMESTAMP};
+  if(!d.farmer||!d.date||isNaN(d.amount))return alert('सभी बॉक्स भरें!');
+  userRef.child('Records').push(d);
+  ['payAmount','payNote','payFarmer'].forEach(id=>document.getElementById(id).value='');
+  alert('✅ पेमेंट जोड़ा गया!');
+}
+function renderLedger(){
+  let farmers={};
+  Object.values(allRecords).forEach(d=>{
+    if(d.type==='hisab'){let f=d.farmer||'अज्ञात';if(!farmers[f])farmers[f]={total:0,paid:0,payments:[]};farmers[f].total+=d.total||0;if(d.status==='Paid')farmers[f].paid+=d.total||0;}
+    if(d.type==='payment'){let f=d.farmer||'अज्ञात';if(!farmers[f])farmers[f]={total:0,paid:0,payments:[]};farmers[f].paid+=d.amount||0;farmers[f].payments.push(d);}
+  });
+  let sel=document.getElementById('ledgerFarmerSelect'),cur=sel.value;
+  sel.innerHTML='<option value="">-- किसान चुनें --</option>';
+  Object.keys(farmers).forEach(f=>sel.innerHTML+=`<option value="${f}">${f}</option>`);
+  if(cur) sel.value=cur;
+  let container=document.getElementById('allLedgerCards');container.innerHTML='';
+  if(!Object.keys(farmers).length){container.innerHTML='<p style="color:var(--muted);font-size:13px;">कोई डेटा नहीं</p>';return;}
+  Object.entries(farmers).forEach(([name,info])=>{
+    let baki=info.total-info.paid;
+    container.innerHTML+=`<div class="ledger-card"><div class="lname">👨‍🌾 ${name}</div><div class="lgrid"><div class="li"><div class="ll">कुल काम</div><div class="lv">₹${info.total.toFixed(0)}</div></div><div class="li green"><div class="ll">मिली रकम</div><div class="lv">₹${info.paid.toFixed(0)}</div></div><div class="li red"><div class="ll">बाकी है</div><div class="lv">₹${Math.max(0,baki).toFixed(0)}</div></div></div></div>`;
+  });
+}
+function showLedgerDetail(){
+  let f=document.getElementById('ledgerFarmerSelect').value,container=document.getElementById('ledgerDetail');
+  if(!f){container.innerHTML='';return;}
+  let total=0,paid=0,rows='';
+  Object.entries(allRecords).forEach(([k,d])=>{
+    if(d.type==='hisab'&&(d.farmer||'अज्ञात')===f){total+=d.total||0;if(d.status==='Paid')paid+=d.total||0;rows+=`<tr><td>${d.date}</td><td>${d.workType}</td><td>₹${d.total??'—'}</td><td class="${d.status==='Paid'?'status-paid':'status-pending'}">${d.status}</td></tr>`;}
+    if(d.type==='payment'&&(d.farmer||'')===f){paid+=d.amount||0;rows+=`<tr><td>${d.date}</td><td>💰 पेमेंट मिला</td><td>+₹${d.amount}</td><td class="status-paid">Paid</td></tr>`;}
+  });
+  let baki=total-paid;
+  container.innerHTML=`<div class="ledger-card"><div class="lname">👨‍🌾 ${f}</div><div class="lgrid"><div class="li"><div class="ll">कुल काम</div><div class="lv">₹${total.toFixed(0)}</div></div><div class="li green"><div class="ll">मिली रकम</div><div class="lv">₹${paid.toFixed(0)}</div></div><div class="li red"><div class="ll">बाकी</div><div class="lv">₹${Math.max(0,baki).toFixed(0)}</div></div></div></div><div class="tbl-wrap"><table><thead><tr><th>तारीख</th><th>काम</th><th>रकम</th><th>स्टेटस</th></tr></thead><tbody>${rows||'<tr class="empty"><td colspan="4">कोई एंट्री नहीं</td></tr>'}</tbody></table></div>`;
+}
+
+// ===================== LOAD DATA =====================
+function loadData(){
+  userRef.child('Records').on('value',snap=>{
+    allRecords={};
+    let hBody=document.getElementById('hisabBody'),kBody=document.getElementById('khetiBody'),fBody=document.getElementById('fuelBody'),iBody=document.getElementById('incomeBody');
+    hBody.innerHTML='';kBody.innerHTML='';fBody.innerHTML='';iBody.innerHTML='';
+    let tH=0,tPaid=0,tPend=0,tK=0,tFuel=0,tIncome=0,tHours=0;
+    let pendingList=[];
+
+    snap.forEach(child=>{
+      let d=child.val(),key=child.key;
+      allRecords[key]=d;
+      let ds=d.date?new Date(d.date).toLocaleDateString('en-GB'):'-';
+      if(d.type==='hisab'){
+        let tVal=d.total??'—';
+        tH+=(d.total||0);
+        if(d.status==='Paid') tPaid+=(d.total||0);
+        else{tPend+=(d.total||0);if(d.total) pendingList.push((d.farmer||'')+': ₹'+d.total);}
+        if(d.unit==='घंटा') tHours+=d.qty||0;
+        let qdisp=d.qtyDisplay||d.qty+' '+d.unit;
+        hBody.innerHTML+=`<tr><td>${ds}</td><td>${d.farmer||'-'}</td><td>${d.workType}</td><td style="font-size:11px;">${qdisp}</td><td>₹${tVal}</td><td class="${d.status==='Paid'?'status-paid':'status-pending'}">${d.status==='Paid'?'✅':'❌'} ${d.status}</td><td><button class="btn-sm" style="background:#0277bd;" onclick="openEditModal('${key}')">✏️</button></td><td><button class="btn-sm btn-red" onclick="deleteEntry('${key}')">❌</button></td></tr>`;
+      } else if(d.type==='kheti'){
+        tK+=d.total||0;
+        kBody.innerHTML+=`<tr><td>${ds}</td><td>${d.category}</td><td>${d.itemName}</td><td>${d.qty||'-'}</td><td>₹${d.total}</td><td><button class="btn-sm btn-red" onclick="deleteEntry('${key}')">❌</button></td></tr>`;
+      } else if(d.type==='fuel'){
+        tFuel+=d.total||0;
+        fBody.innerHTML+=`<tr><td>${ds}</td><td>${d.ftype}</td><td>${d.ltr||'-'}</td><td>₹${d.total}</td><td>${d.note||'-'}</td><td><button class="btn-sm btn-red" onclick="deleteEntry('${key}')">❌</button></td></tr>`;
+      } else if(d.type==='income'){
+        tIncome+=d.total||0;
+        iBody.innerHTML+=`<tr><td>${ds}</td><td>${d.fasal}</td><td>${d.trader||'—'}</td><td>${d.qty||'-'}</td><td style="color:#1565c0;font-weight:700;">₹${d.total}</td><td><button class="btn-sm btn-red" onclick="deleteEntry('${key}')">❌</button></td></tr>`;
+      }
+    });
+
+    if(!hBody.innerHTML) hBody.innerHTML='<tr class="empty"><td colspan="8">कोई काम नहीं जोड़ा गया</td></tr>';
+    if(!kBody.innerHTML) kBody.innerHTML='<tr class="empty"><td colspan="6">कोई बिल नहीं जोड़ा गया</td></tr>';
+    if(!fBody.innerHTML) fBody.innerHTML='<tr class="empty"><td colspan="6">कोई एंट्री नहीं</td></tr>';
+    if(!iBody.innerHTML) iBody.innerHTML='<tr class="empty"><td colspan="6">कोई बिक्री नहीं दर्ज हुई</td></tr>';
+
+    let net=tIncome>0?tIncome-(tPaid+tK):tPaid-tK;
+    document.getElementById('totH').innerText=tH.toFixed(2);
+    document.getElementById('totPaid').innerText=tPaid.toFixed(2);
+    document.getElementById('totPend').innerText=tPend.toFixed(2);
+    document.getElementById('totK').innerText=tK.toFixed(2);
+    document.getElementById('totFuel').innerText=tFuel.toFixed(2);
+    document.getElementById('totIncome').innerText=tIncome.toFixed(2);
+    let heroBox=document.getElementById('netHeroBox');
+    document.getElementById('netHeroVal').innerText=Math.abs(net).toFixed(2);
+    if(net<0){heroBox.className='net-hero loss';document.getElementById('netHeroLabel').innerText='📉 घाटा = मशीन खर्च + खेती खर्च − फसल बिक्री';}
+    else{heroBox.className='net-hero';document.getElementById('netHeroLabel').innerText='📈 शुद्ध मुनाफा = फसल बिक्री − (मशीन खर्च + खेती खर्च)';}
+    let bar=document.getElementById('pendingBar');
+    if(pendingList.length>0){bar.style.display='block';document.getElementById('pendingText').innerText=pendingList.slice(0,3).join(' | ')+(pendingList.length>3?' | ...':'');}
+    else bar.style.display='none';
+
+    let earningBase=tPaid>0?tPaid:1;
+    let dieselWarn=document.getElementById('dieselWarning');
+    if(tFuel>0&&earningBase>0&&(tFuel/earningBase)>0.5) dieselWarn.style.display='block'; else dieselWarn.style.display='none';
+
+    checkServiceAlertWithHours(tHours);
+    updateFuelSummary();
+    renderLedger();
+    updateIncomeSummary();
+  });
+}
+function checkServiceAlert(){
+  let hours=0;
+  Object.values(allRecords).forEach(d=>{if(d.type==='hisab'&&d.unit==='घंटा') hours+=d.qty||0;});
+  checkServiceAlertWithHours(hours);
+}
+function checkServiceAlertWithHours(hours){
+  userRef.child('profile/serviceLimit').once('value',s=>{
+    let limit=s.val(),alertEl=document.getElementById('serviceAlert');
+    if(limit&&hours>=limit){alertEl.style.display='block';alertEl.innerText='🔧 ट्रैक्टर सर्विस का समय हो गया है! कुल '+hours.toFixed(1)+' घंटे (सीमा: '+limit+' घंटे)। तुरंत सर्विस करवाएं!';}
+    else alertEl.style.display='none';
+  });
+}
+function deleteEntry(key){
+  userRef.child('profile').once('value',s=>{
+    let p=s.val(),sp=p&&p.deletePass?p.deletePass:"psb1234";
+    let entered=prompt('🔒 डिलीट पासवर्ड डालें:');
+    if(entered===sp){if(confirm('यह एंट्री हटा दें?')) userRef.child('Records').child(key).remove();}
+    else alert('❌ गलत पासवर्ड!');
+  });
+}
+function clearAllData(){
+  userRef.child('profile').once('value',s=>{
+    let p=s.val(),sp=p&&p.deletePass?p.deletePass:"psb1234";
+    let entered=prompt('⚠️ पूरा डेटा डिलीट करने के लिए पासवर्ड डालें:');
+    if(entered===sp){if(confirm('चेतावनी! सब कुछ हमेशा के लिए डिलीट होगा।')){userRef.child('Records').remove();alert('✅ डेटा डिलीट हो गया!');}}
+    else alert('❌ गलत पासवर्ड!');
+  });
+}
+
+// ===================== REPORT & MISC =====================
+function generateReport(){
+  let month=document.getElementById('reportMonth').value,year=document.getElementById('reportYear').value;
+  let tH=0,tPaid=0,tPend=0,tK=0,tFuel=0,tIncome=0;
+  Object.values(allRecords).forEach(d=>{
+    let dt=new Date(d.date);
+    let mOk=(month==='all')||dt.getMonth()===parseInt(month);
+    let yOk=(year==='all')||dt.getFullYear()===parseInt(year);
+    if(!mOk||!yOk) return;
+    if(d.type==='hisab'){tH+=d.total||0;if(d.status==='Paid')tPaid+=d.total||0;else tPend+=d.total||0;}
+    else if(d.type==='kheti') tK+=d.total||0;
+    else if(d.type==='fuel') tFuel+=d.total||0;
+    else if(d.type==='income') tIncome+=d.total||0;
+  });
+  let base=tIncome>0?tIncome:tPaid,net=base-tK;
+  let isLoss=net<0;
+  document.getElementById('rTH').innerText='₹'+tH.toFixed(2);
+  document.getElementById('rPaid').innerText='₹'+tPaid.toFixed(2);
+  document.getElementById('rPend').innerText='₹'+tPend.toFixed(2);
+  document.getElementById('rIncome').innerText='₹'+tIncome.toFixed(2);
+  document.getElementById('rK').innerText='₹'+tK.toFixed(2);
+  document.getElementById('rFuel').innerText='₹'+tFuel.toFixed(2)+' (अलग)';
+  let nr=document.getElementById('rNetRow'),netEl=document.getElementById('rNet'),netLbl=document.getElementById('rNetLabel');
+  netEl.innerText='₹'+Math.abs(net).toFixed(2);
+  if(isLoss){nr.className='rrow loss-row';netLbl.innerText='📉 घाटा (Loss):';}
+  else{nr.className='rrow';netLbl.innerText='💰 शुद्ध मुनाफा:';}
+  document.getElementById('reportSummary').style.display='block';
+}
+function shareOnWhatsApp(){
+  generateReport();
+  let txt='🌾 *P.S.B. Farm Manager रिपोर्ट*\n📅 '+new Date().toLocaleDateString('en-GB')+'\n\n';
+  txt+='🚜 मशीन काम: '+document.getElementById('rTH').innerText+'\n✅ मिली रकम: '+document.getElementById('rPaid').innerText+'\n❌ बाकी: '+document.getElementById('rPend').innerText+'\n💰 फसल बिक्री: '+document.getElementById('rIncome').innerText+'\n🌱 खेती खर्च: '+document.getElementById('rK').innerText+'\n⛽ डीज़ल: '+document.getElementById('rFuel').innerText+'\n*'+document.getElementById('rNetLabel').innerText+' '+document.getElementById('rNet').innerText+'*';
+  window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');
+}
+function printReport(){
+  generateReport();
+  let w=window.open('','_blank');
+  w.document.write(`<html><head><title>Report</title><style>body{font-family:sans-serif;padding:20px;}table{width:100%;border-collapse:collapse;}td{padding:8px;border-bottom:1px solid #ddd;}tr:last-child td{font-weight:700;font-size:16px;}</style></head><body><h2>🌾 P.S.B. Farm Manager</h2><p>${new Date().toLocaleDateString('en-GB')}</p><table><tr><td>🚜 मशीन काम</td><td>${document.getElementById('rTH').innerText}</td></tr><tr><td>✅ मिली रकम</td><td>${document.getElementById('rPaid').innerText}</td></tr><tr><td>❌ बाकी</td><td>${document.getElementById('rPend').innerText}</td></tr><tr><td>💰 फसल बिक्री</td><td>${document.getElementById('rIncome').innerText}</td></tr><tr><td>🌱 खेती खर्च</td><td>${document.getElementById('rK').innerText}</td></tr><tr><td>⛽ डीज़ल</td><td>${document.getElementById('rFuel').innerText}</td></tr><tr><td>${document.getElementById('rNetLabel').innerText}</td><td>${document.getElementById('rNet').innerText}</td></tr></table></body></html>`);
+  w.document.close();w.print();
+}
+function exportCSV(){
+  let rows=[['प्रकार','तारीख','किसान/नाम','काम/सामग्री/फसल','मात्रा','रकम (₹)','स्टेटस']];
+  Object.values(allRecords).forEach(d=>{
+    if(d.type==='hisab') rows.push(['हिसाब',d.date||'',d.farmer||'',d.workType||'',d.qtyDisplay||d.qty,d.total||'—',d.status||'']);
+    else if(d.type==='kheti') rows.push(['खेती खर्च',d.date||'','',d.itemName||'',d.qty||'',d.total||0,'']);
+    else if(d.type==='fuel') rows.push(['डीज़ल',d.date||'','',d.ftype||'',d.ltr||'',d.total||0,'']);
+    else if(d.type==='payment') rows.push(['पेमेंट',d.date||'',d.farmer||'','किश्त मिली','',d.amount||0,'Paid']);
+    else if(d.type==='income') rows.push(['फसल बिक्री',d.date||'',d.trader||'',d.fasal||'',d.qty||'',d.total||0,'']);
+  });
+  let csv=rows.map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\n');
+  let blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='PSB_Farm_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'-')+'.csv';a.click();
+}
+function exportTXT(){
+  let txt='P.S.B. Farm Manager v5 — Data Export\nतारीख: '+new Date().toLocaleDateString('en-GB')+'\n'+'='.repeat(40)+'\n\n';
+  Object.values(allRecords).forEach(d=>{
+    if(d.type==='hisab')txt+=`[हिसाब] ${d.date}|${d.farmer}|${d.workType}|${d.qtyDisplay||d.qty}|₹${d.total??'—'}|${d.status}\n`;
+    else if(d.type==='kheti')txt+=`[खेती] ${d.date}|${d.category}|${d.itemName}|₹${d.total}\n`;
+    else if(d.type==='fuel')txt+=`[डीज़ल] ${d.date}|${d.ftype}|${d.ltr}L|₹${d.total}\n`;
+    else if(d.type==='income')txt+=`[बिक्री] ${d.date}|${d.fasal}|${d.trader}|₹${d.total}\n`;
+  });
+  let blob=new Blob([txt],{type:'text/plain;charset=utf-8;'});
+  let a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='PSB_Farm_'+new Date().toLocaleDateString('en-GB').replace(/\//g,'-')+'.txt';a.click();
+}
+
+let mediaRecorder=null;
+function loadVoiceNotes(){
+  if(!userRef)return;
+  userRef.child('VoiceNotes').on('value',snap=>{
+    let container=document.getElementById('voiceNotesList');container.innerHTML='';
+    let notes=[];snap.forEach(child=>notes.unshift({key:child.key,...child.val()}));
+    if(!notes.length){container.innerHTML='<p style="color:var(--muted);font-size:13px;">कोई नोट नहीं है</p>';return;}
+    notes.forEach(n=>{container.innerHTML+=`<div class="vnote"><div class="vt">📅 ${n.date||''} ${n.time||''}</div><div class="vc">${n.text||'(voice note)'}</div><div style="margin-top:8px;"><button class="btn-sm btn-red" onclick="deleteNote('${n.key}')">🗑️ हटाएं</button></div></div>`;});
+  });
+}
+function saveManualNote(){
+  let text=document.getElementById('manualNote').value.trim();
+  if(!text)return alert('कुछ लिखें पहले!');
+  let now=new Date();
+  userRef.child('VoiceNotes').push({text,date:now.toLocaleDateString('en-GB'),time:now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),type:'manual',timestamp:firebase.database.ServerValue.TIMESTAMP});
+  document.getElementById('manualNote').value='';alert('✅ नोट सेव हो गया!');
+}
+function startRecording(){
+  if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window)){alert('Chrome use करें।');return;}
+  const SR=window.webkitSpeechRecognition||window.SpeechRecognition,r=new SR();
+  r.lang='hi-IN';r.continuous=false;r.interimResults=false;
+  document.getElementById('recBtn').style.display='none';document.getElementById('stopBtn').style.display='inline-block';document.getElementById('recIndicator').style.display='block';
+  r.start();window._activeRec=r;
+  r.onresult=function(e){let text=e.results[0][0].transcript,now=new Date();userRef.child('VoiceNotes').push({text,date:now.toLocaleDateString('en-GB'),time:now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),type:'voice',timestamp:firebase.database.ServerValue.TIMESTAMP});stopRecording();alert('✅ वॉइस नोट: "'+text+'"');};
+  r.onerror=function(){stopRecording();alert('❌ वॉइस पहचान नहीं हुई।');};
+  r.onend=function(){stopRecording();};
+}
+function stopRecording(){document.getElementById('recBtn').style.display='inline-block';document.getElementById('stopBtn').style.display='none';document.getElementById('recIndicator').style.display='none';if(window._activeRec){try{window._activeRec.stop();}catch(e){}}}
+function deleteNote(key){if(confirm('यह नोट हटाएं?')) userRef.child('VoiceNotes').child(key).remove();}
+
+function loadWeather(){
+  if(!navigator.geolocation){document.getElementById('weatherLoading').innerText='GPS उपलब्ध नहीं';return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    let lat=pos.coords.latitude,lon=pos.coords.longitude;
+    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,apparent_temperature,windspeed_10m`).then(r=>r.json()).then(data=>{
+      let cw=data.current_weather;
+      document.getElementById('wTemp').innerText=cw.temperature+'°C';
+      document.getElementById('wDesc').innerText=cw.weathercode<=2?'☀️ साफ मौसम':cw.weathercode<=49?'⛅ बादल':cw.weathercode<=69?'🌧️ बारिश':'⛈️ तूफान';
+      document.getElementById('wWind').innerText=cw.windspeed+' km/h';
+      let hi=data.hourly,idx=new Date().getHours();
+      if(hi){document.getElementById('wHum').innerText=(hi.relativehumidity_2m?.[idx]||'—')+'%';document.getElementById('wFeel').innerText=(hi.apparent_temperature?.[idx]||'—')+'°C';}
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`).then(r=>r.json()).then(geo=>{document.getElementById('wCity').innerText=geo.address?.city||geo.address?.town||geo.address?.village||'आपका स्थान';});
+      document.getElementById('weatherLoading').style.display='none';document.getElementById('weatherData').style.display='block';
+    }).catch(()=>document.getElementById('weatherLoading').innerText='मौसम लोड नहीं हुआ।');
+  },()=>document.getElementById('weatherLoading').innerText='Location की अनुमति दें।');
+}
+
+const cropData={"गेहूं":{tips:["बुवाई: नवंबर-दिसंबर","बीज: 100-125 kg/हेक्टेयर","DAP 50kg + यूरिया 130kg","सिंचाई: 4-6 बार","रोग: पीला रतुआ — Propiconazole छिड़कें"]},"सोयाबीन":{tips:["बुवाई: जून-जुलाई","बीज: 70-80 kg/हेक्टेयर","Rhizobium कल्चर लगाएं","खरपतवार: Imazethapyr 10 EC","कटाई: 95-100 दिन"]},"चना":{tips:["बुवाई: अक्टूबर-नवंबर","बीज: 80-100 kg/हेक्टेयर","उखटा रोग से बचाव ज़रूरी","DAP 100kg/हेक्टेयर","फली छेदक: Quinalphos"]},"मक्का":{tips:["बुवाई: जून-जुलाई","बीज: 20-25 kg/हेक्टेयर","नाइट्रोजन 3 बार में दें","फॉल आर्मीवर्म: Emamectin","सिंचाई: 7-10 दिन"]},"सरसों":{tips:["बुवाई: अक्टूबर","बीज: 5-6 kg/हेक्टेयर","DAP 100kg + यूरिया 65kg","माहू: Dimethoate स्प्रे","कटाई: 130-140 दिन"]},"धान":{tips:["नर्सरी: जून","रोपाई: जुलाई","अंधा कंड: Propiconazole","2:1 पंक्ति अनुपात","कटाई: 120-150 दिन"]},};
+function showCropInfo(){
+  let c=document.getElementById('smartCropSelect').value,card=document.getElementById('cropInfoCard');
+  if(!c||!cropData[c]){card.style.display='none';return;}
+  card.innerHTML='<h4>💡 '+c+' की खेती — मुख्य सलाह</h4><ul>'+cropData[c].tips.map(t=>'<li>'+t+'</li>').join('')+'</ul>';
+  card.style.display='block';
+}
+
+const CROP_KB = {"गेहूं": {seed_per_bigha: 5, season: "नवंबर - दिसंबर", first_water: "बुवाई के 20-25 दिन बाद (पहला पानी — कंसे निकलते समय)", fertilizer: { DAP: { kg: 100, note: "बुवाई के समय" }, Urea: { kg: 130, splits: 2, note: "पहला: बुवाई पर, दूसरा: पहली सिंचाई पर" }, Zinc: { kg: 25, note: "अगर पहले नहीं डाला तो" } }, general_advice: "गेहूं के लिए खेत अच्छी तरह तैयार करें। पानी की उचित व्यवस्था करें। बीज उपचार (Thiram + Carbendazim) अवश्य करें।" },"सरसों": {seed_per_bigha: 0.4, season: "अक्टूबर", first_water: "30-35 दिन बाद (फूल आने से पहले)", fertilizer: { DAP: { kg: 100, note: "बुवाई के समय" }, Urea: { kg: 65, splits: 2, note: "पहला: बुवाई पर, दूसरा: पहली सिंचाई पर" } }, general_advice: "पंक्तियों में बुवाई करें। माहू (चेपा) का ध्यान रखें। फूल आने पर सिंचाई न करें।" },"चना": {seed_per_bigha: 6, season: "अक्टूबर - नवंबर", first_water: "45-50 दिन बाद (फूल बनते समय — ज़रूरत पर ही)", fertilizer: { DAP: { kg: 100, note: "बुवाई के समय" }, Urea: { kg: 20, splits: 1, note: "कम यूरिया — दलहनी फसल" } }, general_advice: "चने के लिए Rhizobium कल्चर से बीज उपचार करें। अत्यधिक पानी न दें — उखटा रोग हो सकता है।" },"सोयाबीन": {seed_per_bigha: 5, season: "जून - जुलाई", first_water: "वर्षा आधारित — सूखे में 20-25 दिन बाद", fertilizer: { DAP: { kg: 100, note: "बुवाई के समय" }, Urea: { kg: 20, note: "दलहनी — कम नाइट्रोजन चाहिए" }, Zinc: { kg: 25, note: "2 साल में एक बार" } }, general_advice: "Rhizobium + PSB कल्चर से बीज उपचार करें। बुवाई से पहले खेत में नमी ज़रूरी है। खरपतवार जल्दी निकालें।" },"मक्का": {seed_per_bigha: 2, season: "जून - जुलाई", first_water: "7-10 दिन बाद", fertilizer: { DAP: { kg: 100, note: "बुवाई के समय" }, Urea: { kg: 160, splits: 3, note: "पहला: बुवाई, दूसरा: 25 दिन, तीसरा: 45 दिन" } }, general_advice: "बीज अंतरण: 60x20 सेमी। फॉल आर्मीवर्म कीट पर नज़र रखें। नरमंजरी काटें (आधे पौधों से)।" },"धान": {seed_per_bigha: 5, season: "जून - जुलाई (नर्सरी), जुलाई (रोपाई)", first_water: "रोपाई के बाद तुरंत — खेत में पानी भरा रखें", fertilizer: { DAP: { kg: 100, note: "रोपाई के समय" }, Urea: { kg: 130, splits: 3, note: "पहला: रोपाई, दूसरा: 21 दिन, तीसरा: 42 दिन" }, Zinc: { kg: 25, note: "हर 2-3 साल" } }, general_advice: "नर्सरी 25 दिन की होने पर रोपाई करें। खेत में 5 सेमी पानी बनाए रखें। कंसे निकलने पर पानी निकालें।" }};
+const DISEASE_DB = {"गेहूं": [{ name:"पीला रतुआ (Yellow Rust)", symptoms:"पत्तियों पर पीले-नारंगी रंग के धब्बे/धारियाँ, पत्ती पीली पड़ जाती है", medicine:"Propiconazole 25 EC — 200 ml/एकड़", dose:"200 ml प्रति एकड़ 200 लीटर पानी में", time:"जैसे ही लक्षण दिखें, 10 दिन बाद दोबारा" }, { name:"भूरा रतुआ (Brown Rust)", symptoms:"पत्तियों पर भूरे-लाल रंग के गोल धब्बे, बाद में काले हो जाते हैं", medicine:"Mancozeb 75 WP — 500 ग्राम/एकड़", dose:"500 ग्राम प्रति एकड़ 200 लीटर पानी में", time:"फरवरी-मार्च में नज़र रखें" }, { name:"करनाल बंट (Karnal Bunt)", symptoms:"दाने काले-भूरे हो जाते हैं, मछली जैसी बदबू आती है", medicine:"Thiram 75 WS — 2.5 ग्राम/kg बीज (बीज उपचार)", dose:"बुवाई से पहले बीज उपचार करें", time:"बुवाई के समय बीज उपचार" }, { name:"दीमक (Termite)", symptoms:"पौधे पीले पड़कर मर जाते हैं, जड़ें खाई जाती हैं", medicine:"Chlorpyrifos 20 EC — 2 लीटर/एकड़ सिंचाई के साथ", dose:"2 लीटर प्रति एकड़, पानी के साथ खेत में डालें", time:"जैसे ही लक्षण दिखें" }, { name:"एफिड / माहू (Aphid)", symptoms:"पत्तियों पर छोटे हरे-काले कीड़े, पत्तियाँ मुड़ जाती हैं", medicine:"Imidacloprid 17.8 SL — 80-100 ml/एकड़", dose:"80 ml प्रति एकड़ 200 लीटर पानी में", time:"दिसंबर-जनवरी में ध्यान दें" }], "सरसों": [{ name:"माहू / चेपा (Aphid)", symptoms:"पत्तियों, फूल-फलियों पर काले-हरे कीड़ों का समूह, पौधा कमज़ोर होता है", medicine:"Dimethoate 30 EC — 300 ml/एकड़", dose:"300 ml प्रति एकड़ 200 लीटर पानी में", time:"दिसंबर के बाद नज़र रखें, जनवरी में प्रमुख खतरा" }, { name:"सफेद रोली / White Rust", symptoms:"पत्तियों के नीचे सफेद फफोले जैसे धब्बे, पत्तियाँ विकृत", medicine:"Metalaxyl + Mancozeb — 500 ग्राम/एकड़", dose:"500 ग्राम प्रति एकड़ 200 लीटर पानी में", time:"अक्टूबर-नवंबर में निगरानी करें" }, { name:"तना गलन (Sclerotinia Stem Rot)", symptoms:"तना काला पड़कर गल जाता है, पौधा झुक जाता है", medicine:"Carbendazim 50 WP — 200 ग्राम/एकड़", dose:"200 ग्राम प्रति एकड़ 200 लीटर पानी में", time:"फूल आने के समय" }, { name:"पाउडरी मिल्ड्यू", symptoms:"पत्तियों पर सफेद पाउडर जैसी परत", medicine:"Wettable Sulfur 80 WP — 500 ग्राम/एकड़", dose:"500 ग्राम प्रति एकड़ 200 लीटर पानी में", time:"नवंबर-दिसंबर में" }], "चना": [{ name:"उखटा / विल्ट (Fusarium Wilt)", symptoms:"पौधा अचानक पीला पड़कर मर जाता है, जड़ें सड़ी होती हैं", medicine:"Trichoderma viride — 4 ग्राम/kg बीज उपचार + Carbendazim", dose:"बीज उपचार + खेत में 4 kg/एकड़ Trichoderma मिट्टी में मिलाएं", time:"बुवाई से पहले और खेत तैयारी के समय" }, { name:"फली छेदक / Pod Borer", symptoms:"फलियों में छेद, कीड़ा दाना खाता है", medicine:"Chlorpyrifos 20 EC — 400 ml/एकड़", dose:"400 ml प्रति एकड़ 200 लीटर पानी में", time:"फूल-फली लगते समय — जनवरी-फरवरी" }, { name:"एस्कोकाइटा ब्लाइट", symptoms:"पत्तियों और तनों पर भूरे धब्बे", medicine:"Mancozeb 75 WP — 400 ग्राम/एकड़", dose:"400 ग्राम प्रति एकड़ 200 लीटर पानी में", time:"नवंबर-दिसंबर में" }], "सोयाबीन": [{ name:"पत्ती खाने वाली इल्ली (Semilooper)", symptoms:"पत्तियों में छेद, पत्तियाँ खा जाती हैं", medicine:"Quinalphos 25 EC — 600 ml/एकड़", dose:"600 ml प्रति एकड़ 200 लीटर पानी में", time:"जुलाई-अगस्त में" }, { name:"गर्डल बीटल (Girdling Beetle)", symptoms:"तने में गोलाई में कट लगता है, पौधा मुरझाता है", medicine:"Chlorpyrifos 20 EC — 400 ml/एकड़", dose:"400 ml प्रति एकड़ 200 लीटर पानी में", time:"जुलाई-अगस्त" }, { name:"पीला मोज़ेक वायरस (Yellow Mosaic)", symptoms:"पत्तियाँ पीली-हरी धारीदार, पत्तियाँ छोटी रह जाती हैं", medicine:"वायरस का सीधा इलाज नहीं — Imidacloprid से सफेद मक्खी नियंत्रण करें", dose:"100 ml Imidacloprid 17.8 SL प्रति एकड़", time:"जुलाई में — वाहक कीट नियंत्रण" }, { name:"रायजोक्टोनिया एरिअल ब्लाइट", symptoms:"पत्तियाँ और तना भूरे धब्बों से ढक जाते हैं", medicine:"Carbendazim 50 WP — 300 ग्राम/एकड़", dose:"300 ग्राम प्रति एकड़ 200 लीटर पानी में", time:"अगस्त में" }], "मक्का": [{ name:"फॉल आर्मीवर्म (Fall Armyworm)", symptoms:"कोरी पत्तियाँ, कागज़ जैसी दिखती हैं, तना काटता है, पत्तियों में छेद", medicine:"Emamectin Benzoate 5 SG — 80 ग्राम/एकड़", dose:"80 ग्राम प्रति एकड़ 200 लीटर पानी में — कोरल पत्ती पर डालें", time:"जुलाई-अगस्त में नज़र रखें" }, { name:"तना छेदक (Stem Borer)", symptoms:"तने में छेद, डेड हार्ट बनती है", medicine:"Chlorpyrifos Granules — 10 kg/एकड़ कोरल में", dose:"10 kg दाने प्रति एकड़, कोरल पत्ती में डालें", time:"25-30 दिन की फसल पर" }, { name:"झुलसा रोग (Blight)", symptoms:"पत्तियों पर भूरे अंडाकार धब्बे", medicine:"Mancozeb 75 WP — 500 ग्राम/एकड़", dose:"500 ग्राम प्रति एकड़ 200 लीटर पानी में", time:"जुलाई-अगस्त में" }], "धान": [{ name:"धान का खैरा रोग (Zinc Deficiency)", symptoms:"नई पत्तियाँ पीली, पुरानी पत्तियाँ पर नारंगी-भूरे धब्बे", medicine:"जिंक सल्फेट (ZnSO4) 21% — 5 kg/एकड़ खेत में", dose:"5 kg जिंक सल्फेट 50 लीटर पानी में घोल बना खेत में छिड़कें", time:"रोपाई के 15-20 दिन बाद" }, { name:"भूरा धब्बा (Brown Spot)", symptoms:"पत्तियों पर भूरे-काले अंडाकार धब्बे", medicine:"Propiconazole 25 EC — 200 ml/एकड़", dose:"200 ml प्रति एकड़ 200 लीटर पानी में", time:"अगस्त-सितंबर" }, { name:"पत्ती मोड़ा कीट (Leaf Folder)", symptoms:"पत्तियाँ लंबाई में मुड़ जाती हैं, हरा कीड़ा अंदर होता है", medicine:"Chlorpyrifos 20 EC — 400 ml/एकड़", dose:"400 ml प्रति एकड़ 200 लीटर पानी में", time:"अगस्त-सितंबर" }, { name:"तना छेदक (Yellow Stem Borer)", symptoms:"केंद्रीय तना मर जाता है (Dead Heart), या खाली सिट्टे", medicine:"Carbofuran 3G — 15 kg/एकड़ (दाने)", dose:"15 kg दाने प्रति एकड़, खेत में छिड़कें जहाँ पानी हो", time:"रोपाई के 20-25 दिनबाद" }]};
+const CHAT_KB = [{k:["गेहूं","पीलापन","पीला","पत्ती पीली"], a:"🌾 **गेहूं में पीलापन** के कारण और इलाज:\n\n1️⃣ **पीला रतुआ रोग**: पत्तियों पर पीली धारियाँ → Propiconazole 25 EC — 200 ml/एकड़\n2️⃣ **नाइट्रोजन की कमी**: पत्तियाँ एकसमान पीली → यूरिया 25 kg/एकड़ सिंचाई के साथ\n3️⃣ **जिंक की कमी**: नई पत्तियाँ पीली → ZnSO4 25 kg/हेक्टेयर\n\n💊 तुरंत: Propiconazole 200 ml + Urea 1 kg को 200 लीटर पानी में मिलाकर स्प्रे करें।"}, {k:["गेहूं","रतुआ","rust"], a:"🌾 **गेहूं का रतुआ** इलाज:\n\n🔴 पीला रतुआ: Propiconazole 25 EC — 200 ml/एकड़\n🟤 भूरा रतुआ: Mancozeb 75 WP — 500 ग्राम/एकड़\n\n200 लीटर पानी में मिलाकर स्प्रे करें। 10 दिन बाद दोबारा करें।"}, {k:["गेहूं","बुवाई","कब","समय"], a:"🌾 **गेहूं की बुवाई:**\n⏰ समय: नवंबर 15 से दिसंबर 15 तक\n🌱 बीज: 5 kg प्रति बीघा\n💧 पहला पानी: बुवाई के 20-25 दिन बाद\n🧪 खाद: DAP 50 kg + यूरिया 130 kg प्रति हेक्टेयर"}, {k:["सरसों","चेपा","माहू","aphid"], a:"🌻 **सरसों में चेपा/माहू** का इलाज:\n\n💊 Dimethoate 30 EC — 300 ml/एकड़\n200 लीटर पानी में मिलाकर स्प्रे करें।\n\n⚠️ फूल आने पर स्प्रे न करें — परागण पर असर पड़ता है।\n✅ निगरानी: दिसंबर से शुरू करें, जनवरी में ज़्यादा खतरा।"}, {k:["सरसों","सफेद रोली","white rust"], a:"🌻 **सरसों की सफेद रोली:**\nपत्तियों के नीचे सफेद फफोले → Metalaxyl + Mancozeb — 500 ग्राम/एकड़\n200 लीटर पानी में मिलाकर स्प्रे करें।"}, {k:["सरसों","बुवाई","कब"], a:"🌻 **सरसों की बुवाई:**\n⏰ समय: अक्टूबर\n🌱 बीज: 400 ग्राम प्रति बीघा (पंक्तियों में)\n💧 पहला पानी: 30-35 दिन बाद\n🧪 DAP 100 kg + Urea 65 kg प्रति हेक्टेयर"}, {k:["चना","उखटा","wilt","मर"], a:"🟡 **चने का उखटा रोग** (Fusarium Wilt):\n\n⚠️ पौधा अचानक पीला पड़कर मर जाता है — इसका कोई सीधा इलाज नहीं है।\n\n✅ **रोकथाम:**\n• बुवाई से पहले Trichoderma viride — 4 ग्राम/kg बीज से उपचार\n• Carbendazim 50 WP से भी बीज उपचार करें\n• खेत में जल-जमाव न हो\n• प्रतिरोधी किस्म लगाएं (JG-315, KAK-2)"}, {k:["चना","फली छेदक","pod borer"], a:"🟡 **चने का फली छेदक:**\nChlorpyrifos 20 EC — 400 ml/एकड़\n200 लीटर पानी में मिलाकर फूल-फली लगते समय स्प्रे करें।"}, {k:["सोयाबीन","पीला मोज़ेक","yellow mosaic"], a:"🫘 **सोयाबीन पीला मोज़ेक वायरस:**\n\n⚠️ इसका कोई सीधा इलाज नहीं है — वाहक (सफेद मक्खी) को नियंत्रित करें।\n\n💊 Imidacloprid 17.8 SL — 100 ml/एकड़\n200 लीटर पानी में मिलाकर स्प्रे करें।\n\n✅ रोकथाम: रोगरोधी किस्म (JS-335, NRC-37) उगाएं।"}, {k:["सोयाबीन","खरपतवार","weed"], a:"🫘 **सोयाबीन में खरपतवार नियंत्रण:**\n\n💊 Imazethapyr 10 EC — 500 ml/एकड़\nबुवाई के 15-20 दिन बाद, नम ज़मीन पर स्प्रे करें।\n\nया: Quizalofop-p-Ethyl — 300 ml/एकड़ (घास वाले खरपतवार के लिए)"}, {k:["सोयाबीन","इल्ली","semilooper"], a:"🫘 **सोयाबीन की पत्ती खाने वाली इल्ली:**\nQuinalfos 25 EC — 600 ml/एकड़\n200 लीटर पानी में मिलाकर जुलाई-अगस्त में स्प्रे करें।"}, {k:["मक्का","आर्मीवर्म","armyworm","fall"], a:"🌽 **मक्का का फॉल आर्मीवर्म:**\n\n🔍 पहचान: कोरी पत्तियाँ, कागज़ जैसी दिखती हैं\n\n💊 Emamectin Benzoate 5 SG — 80 ग्राम/एकड़\n200 लीटर पानी में मिलाकर सुबह या शाम को कोरल पत्ती पर स्प्रे करें।\n\n✅ रोकथाम: हर 7 दिन पर निगरानी करें।"}, {k:["DAP","urea","यूरिया","खाद","अनुपात"], a:"🧪 **DAP और यूरिया का सही अनुपात:**\n\n🌾 **गेहूं** (प्रति हेक्टेयर): DAP 100 kg बुवाई पर + Urea 130 kg (2 भागों में)\n🌻 **सरसों**: DAP 100 kg + Urea 65 kg\n🟡 **चना**: DAP 100 kg + Urea 20 kg\n🫘 **सोयाबीन**: DAP 100 kg + Urea 20 kg\n🌽 **मक्का**: DAP 100 kg + Urea 160 kg (3 भागों में)\n\n💡 1 हेक्टेयर = लगभग 6.25 बीघा"}, {k:["पानी","सिंचाई","कब","पहला"], a:"💧 **पहली सिंचाई कब करें:**\n🌾 गेहूं: 20-25 दिन बाद (कंसे निकलते समय)\n🌻 सरसों: 30-35 दिन बाद\n🟡 चना: 45-50 दिन बाद (ज़रूरत पर ही)\n🫘 सोयाबीन: वर्षा आधारित, सूखे में 20-25 दिन\n🌽 मक्का: 7-10 दिन बाद"}, {k:["बारिश","flood","जलभराव","बाद"], a:"🌧️ **बारिश के बाद खेत में करें:**\n\n1️⃣ खेत से पानी निकालने का इंतज़ाम करें\n2️⃣ फसल की जड़ों में मिट्टी चढ़ाएं\n3️⃣ नाइट्रोजन (यूरिया) दोबारा दें — बारिश में बह जाती है\n4️⃣ फफूंद रोगों की निगरानी करें — Mancozeb स्प्रे कर सकते हैं\n5️⃣ जलभराव वाली जगह: जिंक सल्फेट 2 kg/एकड़ पानी के साथ"}, {k:["ट्रैक्टर","सर्विस","service","रखरखाव","maintenance"], a:"🚜 **ट्रैक्टर रखरखाव:**\n\n🔧 हर 250 घंटे पर:\n• इंजन ऑयल बदलें\n• ऑयल फिल्टर बदलें\n• एयर फिल्टर साफ करें\n\n🔧 हर 500 घंटे पर:\n• हाइड्रोलिक ऑयल बदलें\n• ट्रांसमिशन ऑयल जाँचें\n• ब्रेक एडजस्ट करें\n\n🔧 हर दिन:\n• रेडिएटर पानी जाँचें\n• टायर प्रेशर जाँचें (18-20 PSI)\n• बैटरी पानी जाँचें"}, {k:["डीज़ल","diesel","तेल","बचत"], a:"⛽ **डीज़ल बचाने के टिप्स:**\n\n1️⃣ इंजन ट्यूनिंग: इंजेक्टर साफ और सेट रखें\n2️⃣ एयर फिल्टर: साफ फिल्टर से 5-10% बचत\n3️⃣ टायर प्रेशर: सही प्रेशर से 3-5% बचत\n4️⃣ सही गियर: ज़्यादा भार पर कम गियर न रखें\n5️⃣ बेकार ढ़ीले चलाना बंद करें"}, ];
+
+function setAIMode(mode){
+  document.querySelectorAll('.ai-mode-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('mode'+mode.charAt(0).toUpperCase()+mode.slice(1)).classList.add('active');
+  ['aiModeChat','aiModeFert','aiModeDisease','aiModeCrop'].forEach(id=>document.getElementById(id).style.display='none');
+  if(mode==='chat') document.getElementById('aiModeChat').style.display='block';
+  if(mode==='fert') document.getElementById('aiModeFert').style.display='block';
+  if(mode==='disease') document.getElementById('aiModeDisease').style.display='block';
+  if(mode==='crop') document.getElementById('aiModeCrop').style.display='block';
+}
+
+function searchKB(query){
+  query=query.toLowerCase().trim();
+  let best=null,bestScore=0;
+  CHAT_KB.forEach(entry=>{
+    let score=0;
+    entry.k.forEach(kw=>{if(query.includes(kw.toLowerCase())) score+=kw.length;});
+    if(score>bestScore){bestScore=score;best=entry;}
+  });
+  if(best&&bestScore>0) return best.a;
+  for(let crop of Object.keys(CROP_KB)){
+    if(query.includes(crop)){
+      let d=CROP_KB[crop];
+      return `🌾 **${crop} की सामान्य जानकारी:**\n\n📅 बुवाई: ${d.season}\n🌱 बीज: ${d.seed_per_bigha} kg प्रति बीघा\n💧 पहला पानी: ${d.first_water}\n💡 सलाह: ${d.general_advice}`;
+    }
+  }
+  return `🤔 माफ़ करें, "${query}" के बारे में मुझे सटीक जानकारी नहीं मिली।\n\nकृपया अधिक स्पष्ट रूप से पूछें।`;
+}
+
+function sendAIChat(){
+  let input=document.getElementById('aiChatInput');
+  let q=input.value.trim();
+  if(!q) return;
+  let area=document.getElementById('aiChatArea');
+  area.innerHTML+=`<div class="ai-msg user">${q}</div>`;
+  input.value='';
+  area.scrollTop=area.scrollHeight;
+  setTimeout(()=>{
+    let ans=searchKB(q);
+    area.innerHTML+=`<div class="ai-msg ai">${ans.replace(/\n/g,'<br>').replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')}</div>`;
+    area.scrollTop=area.scrollHeight;
+  },400);
+}
+
+function quickAIChat(q){
+  document.getElementById('aiChatInput').value=q;
+  sendAIChat();
+  setAIMode('chat');
+}
+
+function startAIVoice(){
+  if(!('webkitSpeechRecognition'in window||'SpeechRecognition'in window)){
+    alert('वॉइस के लिए Chrome browser उपयोग करें।');return;
+  }
+  const SR=window.webkitSpeechRecognition||window.SpeechRecognition,r=new SR();
+  r.lang='hi-IN';r.start();
+  document.getElementById('aiChatInput').placeholder='🎤 सुन रहा हूँ... बोलें';
+  r.onresult=e=>{
+    document.getElementById('aiChatInput').value=e.results[0][0].transcript;
+    document.getElementById('aiChatInput').placeholder='सवाल लिखें या बोलें...';
+    sendAIChat();
+  };
+  r.onerror=()=>{document.getElementById('aiChatInput').placeholder='❌ वॉइस नहीं पहचाना। फिर से कोशिश करें।';};
+}
+
+function calcFertilizer(){
+  let fasal=document.getElementById('fcFasal').value;
+  let bigha=parseFloat(document.getElementById('fcBigha').value)||0;
+  let biswa=parseFloat(document.getElementById('fcBiswa').value)||0;
+  if(bigha===0&&biswa===0){alert('खेत का क्षेत्रफल डालें!');return;}
+  let totalBigha=bigha+(biswa/20);
+  let hectare=totalBigha/6.25;
+  let d=CROP_KB[fasal];
+  if(!d){document.getElementById('fertResult').style.display='block';document.getElementById('fertResult').innerHTML='जानकारी उपलब्ध नहीं।';return;}
+  let f=d.fertilizer;
+  let results=[];
+  let seedKg=(d.seed_per_bigha*totalBigha).toFixed(1);
+  results.push(`🌱 <b>बीज:</b> ${seedKg} kg (${totalBigha.toFixed(2)} बीघा के लिए)`);
+  if(f.DAP){
+    let dapKg=(f.DAP.kg*hectare).toFixed(1);
+    let dapBori=(dapKg/50).toFixed(1);
+    results.push(`🧪 <b>DAP:</b> ${dapKg} kg = <b style="color:#1a6e2e">${dapBori} बोरी</b> (${f.DAP.note})`);
+  }
+  if(f.Urea){
+    let ureaKg=(f.Urea.kg*hectare).toFixed(1);
+    let ureaBori=(ureaKg/50).toFixed(1);
+    let splitNote=f.Urea.splits?` — ${f.Urea.splits} भागों में`:'';
+    results.push(`🧪 <b>यूरिया:</b> ${ureaKg} kg = <b style="color:#1a6e2e">${ureaBori} बोरी</b>${splitNote} (${f.Urea.note})`);
+  }
+  if(f.Zinc){
+    let zincKg=(f.Zinc.kg*hectare).toFixed(1);
+    results.push(`🔬 <b>जिंक सल्फेट:</b> ${zincKg} kg (${f.Zinc.note})`);
+  }
+  results.push(`\n💡 <b>सलाह:</b> ${d.general_advice}`);
+  results.push(`\n📅 <b>बुवाई का समय:</b> ${d.season}`);
+  results.push(`💧 <b>पहला पानी:</b> ${d.first_water}`);
+  let el=document.getElementById('fertResult');
+  el.innerHTML=`<b>📊 ${fasal} — ${totalBigha.toFixed(2)} बीघा के लिए:</b><br><br>`+results.join('<br>');
+  el.style.display='block';
+}
+
+function loadDiseaseList(){
+  let fasal=document.getElementById('dcFasal').value;
+  let sel=document.getElementById('dcDisease');
+  sel.innerHTML='';
+  if(DISEASE_DB[fasal]){
+    DISEASE_DB[fasal].forEach(d=>sel.innerHTML+=`<option value="${d.name}">${d.name}</option>`);
+  }
+}
+
+function showDiseaseInfo(){
+  let fasal=document.getElementById('dcFasal').value;
+  let diseaseName=document.getElementById('dcDisease').value;
+  let el=document.getElementById('diseaseResult');
+  let diseases=DISEASE_DB[fasal];
+  if(!diseases){el.style.display='none';return;}
+  let d=diseases.find(x=>x.name===diseaseName);
+  if(!d){el.style.display='none';return;}
+  el.innerHTML=`<h4>🦠 ${d.name}</h4>
+    <b>🔍 लक्षण:</b> ${d.symptoms}<br><br>
+    <b>💊 दवाई:</b> <span style="color:#bf360c;font-weight:700;">${d.medicine}</span><br>
+    <b>⚖️ मात्रा:</b> ${d.dose}<br>
+    <b>⏰ समय:</b> ${d.time}`;
+  el.style.display='block';
+}
+
+function quickDisease(fasal,disease){
+  document.getElementById('dcFasal').value=fasal;
+  loadDiseaseList();
+  document.getElementById('dcDisease').value=disease;
+  showDiseaseInfo();
+  setAIMode('disease');
+  switchTab('tabOfflineAI',document.querySelector('.ai-tab'));
+}
+
+function showCropAdvice(){
+  let fasal=document.getElementById('cropAdvSel').value;
+  let el=document.getElementById('cropAdvResult');
+  if(!fasal){el.innerHTML='';return;}
+  let d=CROP_KB[fasal];
+  if(!d){el.innerHTML='';return;}
+  let diseases=DISEASE_DB[fasal]||[];
+  let dList=diseases.map(d=>`<li>🦠 <b>${d.name}</b>: ${d.medicine.split('—')[0]}</li>`).join('');
+  let fertList=Object.entries(d.fertilizer).map(([k,v])=>`<li>🧪 ${k}: ${v.kg} kg/हेक्टेयर (${v.note})</li>`).join('');
+  el.innerHTML=`
+    <div style="background:var(--accent2);border-radius:10px;padding:14px;border:1.5px solid var(--border);margin-top:12px;">
+      <h4 style="color:var(--primary);margin-bottom:10px;">🌾 ${fasal} — पूरी जानकारी</h4>
+      <p><b>📅 बुवाई:</b> ${d.season}</p>
+      <p><b>🌱 बीज:</b> ${d.seed_per_bigha} kg प्रति बीघा</p>
+      <p><b>💧 पहला पानी:</b> ${d.first_water}</p>
+      <p style="margin-top:8px;"><b>🧪 खाद (प्रति हेक्टेयर):</b></p>
+      <ul style="padding-left:16px;font-size:12px;line-height:1.9;">${fertList}</ul>
+      <p style="margin-top:8px;"><b>🦠 मुख्य रोग/कीट:</b></p>
+      <ul style="padding-left:16px;font-size:12px;line-height:1.9;">${dList||'<li>कोई प्रमुख रोग नहीं</li>'}</ul>
+      <p style="margin-top:8px;font-size:12px;color:var(--muted);">💡 ${d.general_advice}</p>
+    </div>`;
+}
+
+updateItemOptions();
+loadDiseaseList();
+</script>
+</body>
+</html>
